@@ -9,23 +9,41 @@ A modular single-drug docking pipeline for structure-based screening and reprodu
 ---
 ## Repository Structure
 MolGate/
+
 ├── molgate_runner.py
+
 ├── molgate_module1.py
+
 ├── molgate_module2_engineB.py
+
 ├── molgate_module2_engineC.py
+
 ├── molgate_module3_engineA.py
+
 ├── molgate_module3_engineB.py
+
 ├── molgate_module3_engineC.py
+
 ├── molgate_module4_engineA.py
+
 ├── molgate_module4_engineB.py
+
 ├── molgate_module4_engineC.py
+
 ├── molgate_module5_engineA.py
+
 ├── molgate_module5_engineB.py
+
 ├── config/
+
 ├── docs/
+
 ├── data/
+
 ├── molgate_sessions/
+
 └── tools/
+
 
 ## Pipeline Overview
 Module 1: Input validation, PDB loading, index lookup
