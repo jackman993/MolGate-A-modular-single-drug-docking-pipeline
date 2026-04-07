@@ -62,12 +62,17 @@ MGLTools (prepare_receptor4.py) for legacy fallback
 
 ## Installation
 Quick Start
-## 1) Prepare index files
+### 1) Prepare index files
 Copy sample config files and edit for your targets:
 config/master_index.sample.json -> your master_index.json
 config/drug_library.sample.json (optional)
-## 2) Run a single drug with runner
-## 3) Resume from a later module (example)
+### 2) Run a single drug with runner
+### 3) Resume from a later module (example)
+
+<img width="1077" height="652" alt="image" src="https://github.com/user-attachments/assets/13eadd18-29af-4672-aa2c-48a2b1d9e252" />
+
+
+
 
 ## Engine Policy (Current)
 Ligand path (Module 2 Engine C): default meeko
