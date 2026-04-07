@@ -1,0 +1,11 @@
+# MolGate — Python 依賴（建議 conda：conda install -c conda-forge rdkit）
+rdkit>=2022.09.1
+
+# Module 3 面板後端 molgate_module3_server.py 僅用標準函式庫，無需額外套件
+
+# Engine C：預設用 Meeko 產配體 PDBQT（快速）
+# pip install meeko gemmi
+# （Meeko 常需 gemmi；若只裝 meeko 可能出現 No module named 'gemmi'）
+# 若 Meeko 失敗再：... --engine auto（會再試 obabel）
+meeko
+gemmi

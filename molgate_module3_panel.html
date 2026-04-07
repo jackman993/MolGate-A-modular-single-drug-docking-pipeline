@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MolGate — Module 3 Protein Preparation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #0d0f12;
+  --surface: #141720;
+  --surface2: #1c2030;
+  --border: #2a2f42;
+  --border2: #363d55;
+  --text: #e8eaf2;
+  --text2: #8890aa;
+  --text3: #545d78;
+  --blue: #4a9eff;
+  --blue-dim: #1a3a6e;
+  --green: #3ecf8e;
+  --green-dim: #0d3d27;
+  --amber: #f5a623;
+  --amber-dim: #3d2a08;
+  --red: #f56565;
+  --red-dim: #3d1515;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --fw: 2px;
+  --r-card: 14px;
+  --r-inner: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 17px; line-height: 1.65; min-height: 100vh; display: flex; flex-direction: column; }
+
+.app-shell { flex: 1; display: flex; min-height: 0; width: 100%; align-items: stretch; }
+.main-col { flex: 2; min-width: 0; overflow-y: auto; }
+.main-col .main { max-width: none; }
+
+/* ── Ollama 右欄（約 1/3） ── */
+.ollama-sidebar {
+  flex: 1;
+  min-width: 300px;
+  max-width: min(480px, 38vw);
+  width: 34%;
+  border-left: var(--fw) solid var(--border);
+  background: #0a0c12;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ollama-head {
+  padding: 1rem 1.15rem;
+  border-bottom: var(--fw) solid var(--border);
+  flex-shrink: 0;
+}
+.ollama-head h2 { font-size: 14px; font-weight: 500; font-family: var(--mono); color: var(--blue); letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+.ollama-model-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.ollama-model-row label { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+.ollama-model-row input#ollamaModel {
+  flex: 1; min-width: 140px;
+  padding: 8px 10px; font-size: 13px; font-family: var(--mono);
+  border-radius: var(--r-inner); border: var(--fw) solid var(--border2);
+  background: var(--surface2); color: var(--text);
+}
+.ollama-opts { margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; font-size: 13px; color: var(--text2); }
+.ollama-opts label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+.ollama-opts input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue); }
+
+.ollama-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 120px;
+}
+.chat-msg { display: flex; flex-direction: column; gap: 0.35rem; max-width: 100%; }
+.chat-msg.user { align-items: flex-end; }
+.chat-msg.assistant { align-items: flex-start; }
+.chat-bubble {
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-msg.user .chat-bubble { background: var(--blue-dim); border: var(--fw) solid var(--blue); color: var(--text); }
+.chat-msg.assistant .chat-bubble { background: var(--surface2); border: var(--fw) solid var(--border2); color: var(--text); }
+.chat-raw {
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  background: #06080c;
+  border: var(--fw) solid var(--border);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.chat-raw.visible { display: block !important; }
+.chat-msg .role-lbl { font-size: 10px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.ollama-foot {
+  padding: 1rem 1.15rem;
+  border-top: var(--fw) solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.ollama-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+#ollamaInput {
+  flex: 1;
+  min-height: 52px;
+  max-height: 160px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--sans);
+  border-radius: var(--r-inner);
+  border: var(--fw) solid var(--border2);
+  background: var(--surface2);
+  color: var(--text);
+  resize: vertical;
+}
+.ollama-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.ollama-actions .btn { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+.btn-ollama-send { background: var(--green); color: #000; border-color: var(--green); font-weight: 600; }
+.btn-ollama-send:hover:not(:disabled) { filter: brightness(1.08); }
+.ollama-foot .hint { font-size: 11px; color: var(--text3); margin-top: 0.45rem; line-height: 1.45; }
+
+/* ── Header ── */
+.header { padding: 2.25rem 2.75rem 1.75rem; border-bottom: var(--fw) solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.logo { font-family: var(--mono); font-size: 15px; color: var(--blue); letter-spacing: 0.08em; }
+.logo span { color: var(--text3); }
+.session-info { font-family: var(--mono); font-size: 13px; color: var(--text3); text-align: right; line-height: 1.85; }
+.session-info b { color: var(--text2); }
+
+/* ── Top toolbar ── */
+.panel-toolbar {
+  margin-bottom: 1.75rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface);
+  border: var(--fw) solid var(--border);
+  border-radius: var(--r-card);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.panel-toolbar label.lbl-tb {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+.panel-toolbar input[type="text"] {
+  padding: 11px 14px;
+  font-size: 15px;
+  border-radius: var(--r-inner);
+  border: var(--fw) solid var(--border2);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 44px;
+}
+.panel-toolbar input#sessionInput { flex: 1; min-width: 260px; }
+.panel-toolbar input#targetInput { width: 150px; }
+.panel-toolbar .btn { padding: 10px 20px; font-size: 14px; }
+.panel-toolbar .action-note { font-size: 13px; line-height: 1.5; }
+.panel-toolbar code { font-size: 13px; }
+
+/* ── Layout ── */
+.main { padding: 2.25rem 2.75rem; max-width: 1280px; }
+.pipeline-track { display: flex; flex-direction: column; gap: 1.85rem; }
+
+/* ── Engine Card ── */
+.engine { background: var(--surface); border: var(--fw) solid var(--border); border-radius: var(--r-card); overflow: hidden; transition: border-color 0.2s; }
+.engine.active { border-color: var(--border2); }
+.engine.done { border-color: var(--green); }
+.engine.running { border-color: var(--blue); }
+.engine.error { border-color: var(--red); }
+.engine.needs-input { border-color: var(--amber); }
+
+.engine-header { padding: 1.2rem 1.65rem; display: flex; align-items: center; gap: 1.1rem; cursor: pointer; user-select: none; }
+.engine-badge { font-family: var(--mono); font-size: 11px; font-weight: 500; padding: 5px 11px; border-radius: 6px; letter-spacing: 0.06em; background: var(--surface2); color: var(--text3); border: var(--fw) solid var(--border); white-space: nowrap; }
+.engine.active .engine-badge { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); }
+.engine.done .engine-badge { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+.engine.running .engine-badge { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); animation: pulse 1.2s ease-in-out infinite; }
+.engine.needs-input .engine-badge { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+.engine.error .engine-badge { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }
+
+.engine-title { font-size: 17px; font-weight: 500; color: var(--text); flex: 1; }
+.engine-subtitle { font-size: 14px; color: var(--text3); margin-top: 0.2rem; }
+.engine-chevron { color: var(--text3); font-size: 14px; transition: transform 0.2s; }
+.engine.open .engine-chevron { transform: rotate(180deg); }
+
+.engine-body { display: none; border-top: var(--fw) solid var(--border); }
+.engine.open .engine-body { display: block; }
+
+/* ── Stage List ── */
+.stage-list { padding: 1.15rem 1.65rem; display: flex; flex-direction: column; gap: 0.65rem; }
+.stage-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 0.95rem; border-radius: var(--r-inner); background: var(--surface2); border: var(--fw) solid transparent; }
+.stage-row.warn { border-color: var(--amber); background: var(--amber-dim); }
+.stage-row.skip { opacity: 0.5; }
+.stage-num { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 32px; }
+.stage-name { font-size: 15px; color: var(--text2); flex: 1; }
+.stage-val { font-family: var(--mono); font-size: 13px; color: var(--text); }
+.stage-status { font-size: 11px; font-weight: 500; padding: 4px 9px; border-radius: 5px; white-space: nowrap; }
+.s-auto { background: var(--green-dim); color: var(--green); }
+.s-warn { background: var(--amber-dim); color: var(--amber); }
+.s-skip { background: var(--surface); color: var(--text3); border: var(--fw) solid var(--border); }
+.s-manual { background: #2a1a40; color: #c084fc; border: var(--fw) solid #7c3aed; }
+.s-fail { background: var(--red-dim); color: var(--red); }
+
+/* ── Action Bar ── */
+.action-bar { padding: 1.15rem 1.65rem; border-top: var(--fw) solid var(--border); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.btn { font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 11px 22px; border-radius: var(--r-inner); border: var(--fw) solid; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; min-height: 44px; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-primary:hover:not(:disabled) { background: #6ab3ff; }
+.btn-ghost { background: transparent; color: var(--text2); border-color: var(--border2); }
+.btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+.btn-danger { background: transparent; color: var(--red); border-color: var(--red); }
+.btn-danger:hover:not(:disabled) { background: var(--red-dim); }
+.btn-success { background: var(--green); color: #000; border-color: var(--green); }
+.btn-amber { background: var(--amber); color: #000; border-color: var(--amber); }
+.action-note { font-size: 13px; color: var(--text3); margin-left: auto; line-height: 1.45; }
+
+/* ── Decision Panel ── */
+.decision-panel { margin: 0 1.65rem 1.15rem; background: var(--surface2); border: var(--fw) solid var(--amber); border-radius: var(--r-inner); padding: 1.4rem 1.5rem; }
+.decision-title { font-size: 14px; font-weight: 500; color: var(--amber); margin-bottom: 0.85rem; letter-spacing: 0.04em; font-family: var(--mono); }
+.decision-desc { font-size: 15px; color: var(--text2); margin-bottom: 1rem; line-height: 1.65; }
+.decision-desc code { font-size: 14px; }
+.decision-options { display: flex; gap: 0.65rem; flex-wrap: wrap; }
+
+/* ── Override Panel ── */
+.override-table { width: 100%; border-collapse: collapse; margin: 0.85rem 0; }
+.override-table th { font-family: var(--mono); font-size: 11px; color: var(--text3); text-align: left; padding: 0.55rem 0.65rem; border-bottom: var(--fw) solid var(--border); letter-spacing: 0.06em; }
+.override-table td { font-family: var(--mono); font-size: 14px; padding: 0.55rem 0.65rem; color: var(--text2); border-bottom: var(--fw) solid var(--border); }
+.override-table td:first-child { color: var(--blue); }
+.override-table td:last-child { color: var(--green); }
+
+/* ── Engine Select ── */
+.engine-select-group { display: flex; gap: 0.85rem; flex-wrap: wrap; align-items: center; }
+.radio-btn { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.radio-btn input { accent-color: var(--blue); width: 16px; height: 16px; }
+.radio-btn span { font-family: var(--mono); font-size: 14px; color: var(--text2); }
+
+/* ── Log ── */
+.log-box { margin: 0 1.65rem 1.15rem; background: #0a0c10; border: var(--fw) solid var(--border); border-radius: var(--r-inner); padding: 1rem 1.15rem; font-family: var(--mono); font-size: 13px; color: var(--text3); max-height: 220px; overflow-y: auto; line-height: 1.85; }
+.log-box .ok { color: var(--green); }
+.log-box .warn { color: var(--amber); }
+.log-box .err { color: var(--red); }
+.log-box .info { color: var(--blue); }
+
+/* ── Connector ── */
+.connector { display: flex; align-items: center; padding: 0 2rem; gap: 0.65rem; }
+.connector-line { flex: 1; height: var(--fw); background: var(--border); }
+.connector-label { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+
+/* ── Flags ── */
+.flag-row { display: flex; gap: 0.65rem; flex-wrap: wrap; padding: 0.95rem 1.65rem; border-top: var(--fw) solid var(--border); }
+.flag { font-family: var(--mono); font-size: 11px; padding: 5px 11px; border-radius: 5px; background: var(--surface2); color: var(--text3); border: var(--fw) solid var(--border); }
+.flag.warn { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+.flag.skip { color: var(--text3); }
+
+/* ── Summary ── */
+.summary-bar { margin-top: 1.75rem; background: var(--surface); border: var(--fw) solid var(--green); border-radius: var(--r-card); padding: 1.5rem 1.65rem; display: none; }
+.summary-bar.visible { display: block; }
+.summary-title { font-family: var(--mono); font-size: 13px; color: var(--green); letter-spacing: 0.08em; margin-bottom: 0.95rem; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.summary-item { background: var(--surface2); border-radius: var(--r-inner); padding: 1rem 1.1rem; border: var(--fw) solid var(--border); }
+.summary-item .lbl { font-size: 13px; color: var(--text3); margin-bottom: 0.35rem; }
+.summary-item .val { font-family: var(--mono); font-size: 14px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Mol<span>Gate</span> / module-3 / protein-prep</div>
+  <div class="session-info">
+    <div>session <b id="sid">—</b></div>
+    <div>target <b id="tgt">—</b> · pdb <b id="pdb">—</b></div>
+  </div>
+</div>
+
+<div class="app-shell">
+  <div class="main-col">
+<div class="main">
+<div class="panel-toolbar">
+  <label class="lbl-tb" for="sessionInput">SESSION</label>
+  <input id="sessionInput" type="text" placeholder="16 位 hex，例 93e44ebf6158878c" autocomplete="off" list="sessionList">
+  <datalist id="sessionList"></datalist>
+  <label class="lbl-tb" for="targetInput">TARGET</label>
+  <input id="targetInput" type="text" placeholder="由 stage_03 帶入，可改">
+  <button type="button" class="btn btn-ghost" id="btnLoad" onclick="loadStatus()">載入狀態</button>
+  <span class="action-note" id="toolbarNote">先載入 session，再執行引擎（後端：<code style="color:var(--blue)">py molgate_module3_server.py</code>）</span>
+</div>
+<div class="pipeline-track">
+
+<!-- ═══ ENGINE A ═══ -->
+<div class="engine active open" id="engA">
+  <div class="engine-header" onclick="toggle('engA')">
+    <div class="engine-badge">ENGINE A</div>
+    <div>
+      <div class="engine-title">全自動清理層</div>
+      <div class="engine-subtitle">Stage 10 / 11 / 12 / 13 / 14 → cleaned.pdb</div>
+    </div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesA">
+      <div class="stage-row"><span class="stage-num">10</span><span class="stage-name">蛋白家族分類</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+      <div class="stage-row"><span class="stage-num">11</span><span class="stage-name">結構態確認</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+      <div class="stage-row"><span class="stage-num">12</span><span class="stage-name">污染鏈移除</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+      <div class="stage-row"><span class="stage-num">13</span><span class="stage-name">缺失環評估</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+      <div class="stage-row"><span class="stage-num">14</span><span class="stage-name">去結晶水</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+    </div>
+    <div class="log-box" id="logA" style="display:none"></div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnA" onclick="runEngineA()">▶ Run Engine A</button>
+      <span class="action-note">全自動，無需介入</span>
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div><div class="connector-label">cleaned.pdb</div><div class="connector-line"></div></div>
+
+<!-- ═══ ENGINE B ═══ -->
+<div class="engine" id="engB">
+  <div class="engine-header" onclick="toggle('engB')">
+    <div class="engine-badge">ENGINE B</div>
+    <div>
+      <div class="engine-title">人機決策層</div>
+      <div class="engine-subtitle">Stage 15 / 17 + Flag 16 / 18 → prep_decisions.json</div>
+    </div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesB">
+      <div class="stage-row"><span class="stage-num">15</span><span class="stage-name">輔因子／金屬</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+      <div class="stage-row skip"><span class="stage-num">16</span><span class="stage-name">PROPKA 滴定態</span><span class="stage-val">占位跳過</span><span class="stage-status s-skip">SKIPPED</span></div>
+      <div class="stage-row"><span class="stage-num">17</span><span class="stage-name">關鍵殘基 Override</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+      <div class="stage-row skip"><span class="stage-num">18</span><span class="stage-name">鹽橋分析</span><span class="stage-val">占位跳過</span><span class="stage-status s-skip">SKIPPED</span></div>
+    </div>
+
+    <div class="decision-panel" id="batchBPanel" style="border-color:var(--border2);">
+      <div class="decision-title" style="color:var(--text2);">PANEL 批次模式（等同 CLI <code>--non-interactive</code>）</div>
+      <div class="decision-desc" style="font-size:12px;">
+        偵測到輔因子／金屬時，預設行為對應 <code>--auto-hets</code>。
+        需要<strong>逐一確認</strong>或<strong>互動 Stage 17</strong>時，請在本機命令列執行 <code>molgate_module3_engineB.py</code>（勿加 <code>--non-interactive</code>）。
+        Stage 17 在批次模式下會採用 Master Index 的 <code>override</code>（與引擎一致）。
+      </div>
+      <div class="engine-select-group" style="margin-top:0.5rem;">
+        <label class="radio-btn"><input type="radio" name="auto_hets" value="remove_all" checked><span>auto_hets：remove_all</span></label>
+        <label class="radio-btn"><input type="radio" name="auto_hets" value="keep_all"><span>auto_hets：keep_all</span></label>
+      </div>
+    </div>
+
+    <div class="log-box" id="logB" style="display:none"></div>
+    <div class="flag-row" id="flagsB" style="display:none"></div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnB" onclick="runEngineB()" disabled>▶ Run Engine B</button>
+      <span class="action-note" id="noteB">等待 Engine A 完成</span>
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div><div class="connector-label">prep_decisions.json</div><div class="connector-line"></div></div>
+
+<!-- ═══ ENGINE C ═══ -->
+<div class="engine" id="engC">
+  <div class="engine-header" onclick="toggle('engC')">
+    <div class="engine-badge">ENGINE C</div>
+    <div>
+      <div class="engine-title">Receptor 準備</div>
+      <div class="engine-subtitle">Stage 19 / 20 → receptor.pdbqt</div>
+    </div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesC">
+      <div class="stage-row"><span class="stage-num">19</span><span class="stage-name">apo PDB → PDBQT</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+      <div class="stage-row"><span class="stage-num">20</span><span class="stage-name">幾何 QC</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+    </div>
+    <div class="log-box" id="logC" style="display:none"></div>
+    <div class="action-bar">
+      <div class="engine-select-group">
+        <label class="radio-btn"><input type="radio" name="eng" value="auto" checked><span>auto</span></label>
+        <label class="radio-btn"><input type="radio" name="eng" value="obabel"><span>obabel</span></label>
+        <label class="radio-btn"><input type="radio" name="eng" value="meeko"><span>meeko</span></label>
+      </div>
+      <button class="btn btn-primary" id="btnC" onclick="runEngineC()" disabled>▶ Run Engine C</button>
+      <span class="action-note" id="noteC">等待 Engine B 完成</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUMMARY ═══ -->
+<div class="summary-bar" id="summary">
+  <div class="summary-title">MODULE 3 COMPLETE ✓</div>
+  <div class="summary-grid">
+    <div class="summary-item"><div class="lbl">cleaned.pdb</div><div class="val" id="sumClean">—</div></div>
+    <div class="summary-item"><div class="lbl">chains 保留</div><div class="val" id="sumChains">—</div></div>
+    <div class="summary-item"><div class="lbl">水分子移除</div><div class="val" id="sumWater">—</div></div>
+    <div class="summary-item"><div class="lbl">receptor.pdbqt</div><div class="val" id="sumPdbqt">—</div></div>
+    <div class="summary-item"><div class="lbl">引擎</div><div class="val" id="sumEngine">—</div></div>
+    <div class="summary-item"><div class="lbl">Flags</div><div class="val" id="sumFlags">—</div></div>
+  </div>
+</div>
+
+</div><!-- pipeline-track -->
+</div><!-- main -->
+  </div><!-- main-col -->
+
+  <aside class="ollama-sidebar" id="ollamaSidebar">
+    <div class="ollama-head">
+      <h2>Ollama · 本機 LLM</h2>
+      <div class="ollama-model-row">
+        <label for="ollamaModel">model</label>
+        <input type="text" id="ollamaModel" value="gemma4:e2b" spellcheck="false" title="與 ollama list 名稱一致">
+      </div>
+      <div class="ollama-opts">
+        <label><input type="checkbox" id="ollamaShowRaw"> 顯示原始串流（含思考／CoT 類文字）</label>
+        <label><input type="checkbox" id="ollamaStream" checked> 串流輸出</label>
+      </div>
+    </div>
+    <div class="ollama-messages" id="ollamaMessages" aria-live="polite"></div>
+    <div class="ollama-foot">
+      <div class="ollama-input-row">
+        <textarea id="ollamaInput" rows="2" placeholder="輸入訊息…（Enter 送出，Shift+Enter 換行）"></textarea>
+        <button type="button" class="btn btn-ollama-send" id="btnOllamaSend" onclick="ollamaSend()">送出</button>
+      </div>
+      <div class="ollama-actions">
+        <button type="button" class="btn btn-ghost" id="btnOllamaStop" onclick="ollamaStop()" disabled>停止生成</button>
+        <button type="button" class="btn btn-ghost" onclick="ollamaClear()">清除對話</button>
+      </div>
+      <p class="hint">經同源後端轉發至 <code>Ollama /api/chat</code>（預設 127.0.0.1:11434）。請先 <code>ollama serve</code> 並拉好模型。</p>
+    </div>
+  </aside>
+</div><!-- app-shell -->
+
+<script>
+// MolGate Module 3 panel — 與 molgate_module3_server.py 連線（同源 /api）
+
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function setEngineState(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('active','running','needs-input','done','error');
+  if (state) el.classList.add(state);
+  const badge = el.querySelector('.engine-badge');
+  const labels = { active:'READY', running:'RUNNING...', 'needs-input':'ACTION NEEDED', done:'DONE ✓', error:'ERROR' };
+  const prefix = id === 'engA' ? 'ENGINE A' : id === 'engB' ? 'ENGINE B' : 'ENGINE C';
+  badge.textContent = state ? `${prefix} · ${labels[state]||state}` : prefix;
+}
+
+function setStageResult(listId, stageIdx, val, statusClass, statusText) {
+  const rows = document.querySelectorAll(`#${listId} .stage-row`);
+  if (!rows[stageIdx]) return;
+  const row = rows[stageIdx];
+  row.querySelector('.stage-val').textContent = val;
+  const s = row.querySelector('.stage-status');
+  if (!statusText) {
+    s.style.display = 'none';
+    return;
+  }
+  s.className = 'stage-status ' + statusClass;
+  s.textContent = statusText;
+  s.style.display = '';
+}
+
+function clearLog(logId) {
+  const box = document.getElementById(logId);
+  box.innerHTML = '';
+  box.style.display = 'none';
+}
+
+function appendLog(logId, msg, cls='') {
+  const box = document.getElementById(logId);
+  box.style.display = '';
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function flushLog(logId, text, ok) {
+  clearLog(logId);
+  if (!text) return;
+  const cls = ok ? 'ok' : 'err';
+  text.split('\n').forEach(line => {
+    if (line.length) appendLog(logId, line, cls);
+  });
+}
+
+function applyFlagsFromPrep(prep) {
+  const flagRow = document.getElementById('flagsB');
+  const flags = (prep && prep.flags) ? prep.flags : [];
+  if (!flags.length) {
+    flagRow.style.display = 'none';
+    flagRow.innerHTML = '';
+    return;
+  }
+  flagRow.style.display = '';
+  flagRow.innerHTML = flags.map(f => {
+    const skip = /SKIPPED/i.test(f);
+    return `<span class="flag ${skip ? 'skip' : 'warn'}">${escapeHtml(String(f))}</span>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function applyStatus(d) {
+  if (!d || !d.ok) {
+    document.getElementById('sid').textContent = '—';
+    document.getElementById('tgt').textContent = '—';
+    document.getElementById('pdb').textContent = '—';
+    setEngineState('engA', '');
+    setEngineState('engB', '');
+    setEngineState('engC', '');
+    document.getElementById('btnA').disabled = true;
+    document.getElementById('btnB').disabled = true;
+    document.getElementById('btnC').disabled = true;
+    document.getElementById('noteB').textContent = '先載入有效 session';
+    document.getElementById('noteC').textContent = '等待 Engine B';
+    document.getElementById('summary').classList.remove('visible');
+    return;
+  }
+
+  document.getElementById('sid').textContent = d.session_id;
+  document.getElementById('tgt').textContent = d.target || '—';
+  document.getElementById('pdb').textContent = d.pdb_id || '—';
+  if (d.target && !document.getElementById('targetInput').value.trim()) {
+    document.getElementById('targetInput').value = d.target;
+  }
+
+  (d.engine_a.stages || []).forEach((row, i) => {
+    setStageResult('stagesA', i, row.val, row.statusClass, row.statusText);
+  });
+
+  (d.engine_b.stages || []).forEach((row, i) => {
+    setStageResult('stagesB', i, row.val, row.statusClass, row.statusText);
+  });
+
+  (d.engine_c.stages || []).forEach((row, i) => {
+    setStageResult('stagesC', i, row.val, row.statusClass, row.statusText);
+  });
+
+  applyFlagsFromPrep(d.engine_b.prep);
+
+  const aDone = d.engine_a.complete;
+  const bDone = d.engine_b.complete;
+  const cDone = d.engine_c.complete;
+
+  document.getElementById('btnA').disabled = false;
+  document.getElementById('btnB').disabled = !aDone;
+  document.getElementById('btnC').disabled = !d.engine_b.ready_for_engine_e;
+
+  setEngineState('engA', aDone ? 'done' : 'active');
+  setEngineState('engB', bDone ? 'done' : (aDone ? 'active' : ''));
+  setEngineState('engC', cDone ? 'done' : (d.engine_b.ready_for_engine_e ? 'active' : ''));
+
+  document.getElementById('noteB').textContent = aDone ? '可執行（批次 --non-interactive）' : '等待 Engine A';
+  document.getElementById('noteC').textContent = d.engine_b.ready_for_engine_e ? '可執行' : '等待 prep_decisions（Engine B）';
+
+  const sm = d.summary || {};
+  if (cDone) {
+    document.getElementById('sumClean').textContent = sm.cleaned_rel || '—';
+    document.getElementById('sumChains').textContent = sm.chains || '—';
+    document.getElementById('sumWater').textContent = sm.water_removed || '—';
+    document.getElementById('sumPdbqt').textContent = sm.receptor_rel || '—';
+    document.getElementById('sumEngine').textContent = sm.engine_c || '—';
+    const fl = sm.flags && sm.flags.length ? sm.flags.join(' · ') : '—';
+    document.getElementById('sumFlags').textContent = fl;
+    document.getElementById('summary').classList.add('visible');
+  } else {
+    document.getElementById('summary').classList.remove('visible');
+  }
+}
+
+async function apiGet(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiPostRun(body) {
+  const r = await fetch('/api/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  let j;
+  try {
+    j = await r.json();
+  } catch (_) {
+    throw new Error('後端回應不是 JSON（請確認已啟動 molgate_module3_server.py）');
+  }
+  if (j.error && !j.status) throw new Error(j.error);
+  return j;
+}
+
+async function loadSessionList() {
+  try {
+    const j = await apiGet('/api/sessions');
+    const dl = document.getElementById('sessionList');
+    dl.innerHTML = (j.sessions || []).map(s => `<option value="${s}">`).join('');
+  } catch (_) { /* ignore */ }
+}
+
+async function loadStatus() {
+  const sid = document.getElementById('sessionInput').value.trim();
+  document.getElementById('toolbarNote').textContent = '讀取中…';
+  try {
+    const d = await apiGet('/api/status?session=' + encodeURIComponent(sid));
+    applyStatus(d);
+    document.getElementById('toolbarNote').textContent = d.ok ? '已同步磁碟 stage JSON' : (d.error || '錯誤');
+  } catch (e) {
+    document.getElementById('toolbarNote').textContent = '無法連線後端（已啟動 molgate_module3_server.py ？）';
+    console.error(e);
+  }
+}
+
+function currentTarget() {
+  const t = document.getElementById('targetInput').value.trim();
+  const t2 = document.getElementById('tgt').textContent.trim();
+  return t || (t2 && t2 !== '—' ? t2 : '');
+}
+
+async function runEngineA() {
+  const sid = document.getElementById('sessionInput').value.trim();
+  const target = currentTarget();
+  if (!sid || !target) { alert('請填 session 與 target'); return; }
+  const btn = document.getElementById('btnA');
+  btn.disabled = true;
+  setEngineState('engA', 'running');
+  clearLog('logA');
+  try {
+    const j = await apiPostRun({ engine: 'a', session: sid, target });
+    flushLog('logA', j.output || '', j.ok);
+    applyStatus(j.status);
+    if (!j.ok) setEngineState('engA', 'error');
+  } catch (e) {
+    appendLog('logA', String(e), 'err');
+    setEngineState('engA', 'error');
+    await loadStatus();
+  }
+}
+
+async function runEngineB() {
+  const sid = document.getElementById('sessionInput').value.trim();
+  const target = currentTarget();
+  if (!sid || !target) { alert('請填 session 與 target'); return; }
+  const auto_hets = document.querySelector('input[name="auto_hets"]:checked').value;
+  const btn = document.getElementById('btnB');
+  btn.disabled = true;
+  setEngineState('engB', 'running');
+  clearLog('logB');
+  try {
+    const j = await apiPostRun({ engine: 'b', session: sid, target, auto_hets });
+    flushLog('logB', j.output || '', j.ok);
+    applyStatus(j.status);
+    if (!j.ok) setEngineState('engB', 'error');
+  } catch (e) {
+    appendLog('logB', String(e), 'err');
+    setEngineState('engB', 'error');
+    await loadStatus();
+  }
+}
+
+async function runEngineC() {
+  const sid = document.getElementById('sessionInput').value.trim();
+  const target = currentTarget();
+  if (!sid || !target) { alert('請填 session 與 target'); return; }
+  const engine_c = document.querySelector('input[name="eng"]:checked').value;
+  const btn = document.getElementById('btnC');
+  btn.disabled = true;
+  setEngineState('engC', 'running');
+  clearLog('logC');
+  try {
+    const j = await apiPostRun({ engine: 'c', session: sid, target, engine_c });
+    flushLog('logC', j.output || '', j.ok);
+    applyStatus(j.status);
+    if (!j.ok) setEngineState('engC', 'error');
+  } catch (e) {
+    appendLog('logC', String(e), 'err');
+    setEngineState('engC', 'error');
+    await loadStatus();
+  }
+}
+
+// ── Ollama 右欄（/api/ollama/chat 代理）────────────────
+let ollamaHistory = [];
+let ollamaAbort = null;
+let ollamaStreaming = false;
+
+function ollamaAppendMessage(role, text) {
+  const box = document.getElementById('ollamaMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg ' + role;
+  const lbl = role === 'user' ? 'You' : 'Assistant';
+  wrap.innerHTML =
+    '<span class="role-lbl">' + lbl + '</span>' +
+    '<div class="chat-bubble">' +
+    (role === 'assistant'
+      ? '<div class="chat-bubble-text"></div><pre class="chat-raw" style="display:none"></pre>'
+      : '<div class="chat-bubble-text"></div>') +
+    '</div>';
+  wrap.querySelector('.chat-bubble-text').textContent = text || '';
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function ollamaBuildPayload() {
+  return ollamaHistory.map((m) => ({ role: m.role, content: m.content }));
+}
+
+async function ollamaSend() {
+  const input = document.getElementById('ollamaInput');
+  const text = (input.value || '').trim();
+  if (!text || ollamaStreaming) return;
+  const model = (document.getElementById('ollamaModel').value || '').trim() || 'gemma4:e2b';
+  const useStream = document.getElementById('ollamaStream').checked;
+  const showRaw = document.getElementById('ollamaShowRaw').checked;
+
+  input.value = '';
+  ollamaHistory.push({ role: 'user', content: text });
+  ollamaAppendMessage('user', text);
+
+  const asstWrap = ollamaAppendMessage('assistant', '');
+  const textEl = asstWrap.querySelector('.chat-bubble-text');
+  const rawEl = asstWrap.querySelector('.chat-raw');
+  if (rawEl) {
+    rawEl.style.display = showRaw ? 'block' : 'none';
+    if (showRaw) rawEl.classList.add('visible');
+  }
+
+  ollamaAbort = new AbortController();
+  ollamaStreaming = true;
+  document.getElementById('btnOllamaSend').disabled = true;
+  document.getElementById('btnOllamaStop').disabled = false;
+
+  let acc = '';
+  let rawAcc = '';
+
+  try {
+    const r = await fetch('/api/ollama/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: ollamaBuildPayload(),
+        stream: useStream,
+      }),
+      signal: ollamaAbort.signal,
+    });
+
+    if (!useStream) {
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || JSON.stringify(j));
+      const msg = j.message || {};
+      acc = msg.content || JSON.stringify(j);
+      textEl.textContent = acc;
+      if (rawEl && showRaw) rawEl.textContent = JSON.stringify(j, null, 2);
+      ollamaHistory.push({ role: 'assistant', content: acc });
+      return;
+    }
+
+    if (!r.ok) {
+      const errText = await r.text();
+      throw new Error(errText || 'HTTP ' + r.status);
+    }
+    const ct = r.headers.get('Content-Type') || '';
+    if (!ct.includes('text/event-stream')) {
+      const t = await r.text();
+      try {
+        const j = JSON.parse(t);
+        throw new Error(j.error || t || '非串流回應');
+      } catch (e) {
+        if (e instanceof SyntaxError) throw new Error(t || '非串流回應');
+        throw e;
+      }
+    }
+
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let sep;
+      while ((sep = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, sep);
+        buf = buf.slice(sep + 2);
+        if (!block.startsWith('data: ')) continue;
+        const line = block.slice(6).trim();
+        if (!line) continue;
+        rawAcc += line + '\n';
+        if (rawEl && showRaw) rawEl.textContent = rawAcc;
+        try {
+          const obj = JSON.parse(line);
+          if (obj.error) throw new Error(obj.error);
+          const piece = obj.message && obj.message.content ? obj.message.content : '';
+          acc += piece;
+          textEl.textContent = acc;
+        } catch (e) {
+          if (e instanceof SyntaxError) continue;
+          throw e;
+        }
+      }
+    }
+    ollamaHistory.push({ role: 'assistant', content: acc });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      textEl.textContent = acc ? acc + '\n\n[已停止]' : '[已停止]';
+      if (acc) ollamaHistory.push({ role: 'assistant', content: acc });
+    } else {
+      const err = String(e.message || e);
+      textEl.textContent = acc ? acc + '\n\n錯誤：' + err : '錯誤：' + err;
+      if (acc) ollamaHistory.push({ role: 'assistant', content: acc });
+    }
+  } finally {
+    ollamaStreaming = false;
+    ollamaAbort = null;
+    document.getElementById('btnOllamaSend').disabled = false;
+    document.getElementById('btnOllamaStop').disabled = true;
+  }
+}
+
+function ollamaStop() {
+  if (ollamaAbort) ollamaAbort.abort();
+}
+
+function ollamaClear() {
+  ollamaStop();
+  ollamaHistory = [];
+  document.getElementById('ollamaMessages').innerHTML = '';
+}
+
+document.getElementById('ollamaInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    ollamaSend();
+  }
+});
+
+(function init() {
+  loadSessionList();
+  const q = new URLSearchParams(location.search).get('session');
+  if (q) {
+    document.getElementById('sessionInput').value = q;
+    loadStatus();
+  }
+})();
+</script>
+</body>
+</html>

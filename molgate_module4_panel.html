@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MolGate — Module 4 Pocket Definition</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0d0f12;--surface:#141720;--surface2:#1c2030;--border:#2a2f42;--border2:#363d55;
+  --text:#e8eaf2;--text2:#8890aa;--text3:#545d78;
+  --blue:#4a9eff;--blue-dim:#1a3a6e;--blue-light:#e6f1fb;--blue-dark:#0c447c;
+  --green:#3ecf8e;--green-dim:#0d3d27;--green-light:#eaf3de;--green-dark:#3b6d11;
+  --amber:#f5a623;--amber-dim:#3d2a08;
+  --red:#f56565;--red-dim:#3d1515;
+  --purple:#c084fc;--purple-dim:#2a1a40;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh;}
+.header{padding:2rem 2.5rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:var(--mono);font-size:13px;color:var(--blue);letter-spacing:.08em;}
+.logo span{color:var(--text3);}
+.session-info{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:right;line-height:1.8;}
+.session-info b{color:var(--text2);}
+.main{padding:2rem 2.5rem;max-width:1100px;}
+.pipeline-track{display:flex;flex-direction:column;gap:1.5rem;}
+
+/* Engine card */
+.engine{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;}
+.engine.active{border-color:var(--border2);}
+.engine.done{border-color:var(--green);}
+.engine.running{border-color:var(--blue);}
+.engine.needs-input{border-color:var(--amber);}
+.engine.error{border-color:var(--red);}
+.engine-header{padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;cursor:pointer;user-select:none;}
+.engine-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;letter-spacing:.06em;background:var(--surface2);color:var(--text3);border:1px solid var(--border);white-space:nowrap;}
+.engine.active .engine-badge{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.engine.done .engine-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
+.engine.running .engine-badge{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);animation:pulse 1.2s ease-in-out infinite;}
+.engine.needs-input .engine-badge{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+.engine.error .engine-badge{background:var(--red-dim);color:var(--red);border-color:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.engine-title{font-size:14px;font-weight:500;color:var(--text);flex:1;}
+.engine-subtitle{font-size:12px;color:var(--text3);}
+.engine-chevron{color:var(--text3);font-size:12px;transition:transform .2s;}
+.engine.open .engine-chevron{transform:rotate(180deg);}
+.engine-body{display:none;border-top:1px solid var(--border);}
+.engine.open .engine-body{display:block;}
+
+/* Stage list */
+.stage-list{padding:1rem 1.5rem;display:flex;flex-direction:column;gap:.5rem;}
+.stage-row{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-radius:6px;background:var(--surface2);border:1px solid transparent;}
+.stage-row.warn{border-color:var(--amber);}
+.stage-row.skip{opacity:.5;}
+.stage-num{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:28px;}
+.stage-name{font-size:13px;color:var(--text2);flex:1;}
+.stage-val{font-family:var(--mono);font-size:11px;color:var(--text);}
+.stage-status{font-size:10px;font-weight:500;padding:2px 6px;border-radius:3px;white-space:nowrap;}
+.s-auto{background:var(--green-dim);color:var(--green);}
+.s-warn{background:var(--amber-dim);color:var(--amber);}
+.s-skip{background:var(--surface);color:var(--text3);border:1px solid var(--border);}
+.s-manual{background:var(--purple-dim);color:var(--purple);border:1px solid #7c3aed;}
+.s-fail{background:var(--red-dim);color:var(--red);}
+.s-confirm{background:var(--blue-dim);color:var(--blue);}
+
+/* Action bar */
+.action-bar{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;}
+.btn{font-family:var(--mono);font-size:12px;font-weight:500;padding:8px 18px;border-radius:6px;border:1px solid;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-primary:hover:not(:disabled){background:#6ab3ff;}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border2);}
+.btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text);}
+.btn-success{background:var(--green);color:#000;border-color:var(--green);}
+.btn-amber{background:var(--amber);color:#000;border-color:var(--amber);}
+.action-note{font-size:11px;color:var(--text3);margin-left:auto;}
+
+/* Log */
+.log-box{margin:0 1.5rem 1rem;background:#0a0c10;border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-family:var(--mono);font-size:11px;color:var(--text3);max-height:140px;overflow-y:auto;line-height:1.8;}
+.log-box .ok{color:var(--green);}
+.log-box .warn{color:var(--amber);}
+.log-box .err{color:var(--red);}
+.log-box .info{color:var(--blue);}
+
+/* Connector */
+.connector{display:flex;align-items:center;padding:0 2rem;gap:.5rem;}
+.connector-line{flex:1;height:1px;background:var(--border);}
+.connector-label{font-family:var(--mono);font-size:10px;color:var(--text3);}
+
+/* Candidate cards (Engine B) */
+.candidate-section{padding:0 1.5rem 1rem;}
+.candidate-label{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.08em;margin-bottom:.75rem;}
+.candidate-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+.cand-card{padding:1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2);cursor:pointer;transition:all .15s;position:relative;}
+.cand-card:hover{border-color:var(--border2);}
+.cand-card.selected{border:2px solid var(--blue);background:var(--blue-dim);}
+.cand-card.target-card{border-color:var(--green);}
+.cand-card.target-card.selected{border:2px solid var(--green);background:var(--green-dim);}
+.cand-het{font-size:20px;font-weight:500;color:var(--text);font-family:var(--mono);}
+.cand-info{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.7;}
+.cand-badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;margin-top:6px;}
+.badge-target{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
+.badge-other{background:var(--surface);color:var(--text3);border:1px solid var(--border);}
+.cand-check{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--blue);display:none;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+.cand-card.selected .cand-check{display:flex;}
+.cand-card.target-card.selected .cand-check{background:var(--green);}
+.confirm-btn-row{margin-top:1rem;display:flex;gap:.5rem;}
+
+/* Modal overlay */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:420px;max-width:90vw;}
+.modal-title{font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:.08em;margin-bottom:.25rem;}
+.modal-sub{font-size:12px;color:var(--text3);margin-bottom:1.25rem;}
+.coord-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);}
+.coord-row:last-of-type{border-bottom:none;}
+.coord-label{font-size:12px;color:var(--text2);min-width:90px;font-family:var(--mono);}
+.coord-val{font-size:14px;font-weight:500;color:var(--text);font-family:var(--mono);flex:1;}
+.coord-input{font-size:13px;font-family:var(--mono);padding:5px 8px;border:1px solid var(--border2);border-radius:6px;width:110px;background:var(--surface2);color:var(--text);display:none;}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.25rem;justify-content:flex-end;}
+.modal-note{font-size:11px;color:var(--text3);margin-top:.75rem;}
+
+/* Summary */
+.summary-bar{margin-top:1.5rem;background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:1.25rem 1.5rem;display:none;}
+.summary-bar.visible{display:block;}
+.summary-title{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.08em;margin-bottom:.75rem;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;}
+.summary-item{background:var(--surface2);border-radius:6px;padding:.75rem;}
+.summary-item .lbl{font-size:11px;color:var(--text3);margin-bottom:.25rem;}
+.summary-item .val{font-family:var(--mono);font-size:12px;color:var(--text);}
+.lang-switch{display:flex;gap:4px;align-items:center;}
+.btn-lang{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);cursor:pointer;}
+.btn-lang:hover{color:var(--text2);border-color:var(--border);}
+.btn-lang.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.api-banner{display:none;margin:0 2.5rem 1rem;padding:.75rem 1rem;border-radius:8px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font-size:12px;font-family:var(--mono);}
+.terminal-block{margin:0 1.5rem 1rem;padding:1rem;border-radius:8px;border:1px solid var(--border2);background:#0a0c10;}
+.terminal-block-title{font-size:11px;color:var(--text3);margin-bottom:.5rem;font-family:var(--mono);letter-spacing:.04em;}
+.cli-pre{font-family:var(--mono);font-size:11px;color:var(--text2);white-space:pre-wrap;word-break:break-all;line-height:1.6;margin:.5rem 0;padding:.5rem;background:var(--surface2);border-radius:6px;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<div class="api-banner" id="apiBanner" role="status"></div>
+
+<div class="header">
+  <div class="logo">Mol<span>Gate</span> / module-4 / pocket-definition</div>
+  <div style="display:flex;align-items:center;gap:1.25rem;">
+    <div class="lang-switch">
+      <button type="button" class="btn-lang active" data-set-lang="zh" id="langZh">繁中</button>
+      <button type="button" class="btn-lang" data-set-lang="en" id="langEn">English</button>
+    </div>
+    <div class="session-info">
+      <div><span data-i18n="lbl_session">session</span> <b id="sid">93e44ebf6158878c</b></div>
+      <div><span data-i18n="lbl_target">target</span> <b id="tgt">COX2</b> · <span data-i18n="lbl_pdb">pdb</span> <b id="pdb">5IKT</b></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+<div class="pipeline-track">
+
+<!-- ENGINE A -->
+<div class="engine active open" id="engA">
+  <div class="engine-header" onclick="toggle('engA')">
+    <div class="engine-badge">ENGINE A</div>
+    <div><div class="engine-title" data-i18n="engA_title">HETATM 掃描過濾</div><div class="engine-subtitle" data-i18n="engA_sub">Stage 21 → 候選配體列表</div></div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesA">
+      <div class="stage-row"><span class="stage-num">21</span><span class="stage-name" data-i18n="stage21_name">HETATM 掃描（五層過濾）</span><span class="stage-val">—</span><span class="stage-status s-auto" style="display:none">AUTO</span></div>
+    </div>
+    <div class="log-box" id="logA" style="display:none"></div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnA" onclick="runEngineA()"><span data-i18n="btn_run">▶ Run</span> Engine A</button>
+      <span class="action-note" data-i18n="note_a" id="noteA">全自動，無需介入</span>
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div><div class="connector-label">stage_21_hetatm.json</div><div class="connector-line"></div></div>
+
+<!-- ENGINE B -->
+<div class="engine" id="engB">
+  <div class="engine-header" onclick="toggle('engB')">
+    <div class="engine-badge">ENGINE B</div>
+    <div><div class="engine-title" data-i18n="engB_title">配體身份確認</div><div class="engine-subtitle" data-i18n="engB_sub">Stage 22 → 選定配體（人機）</div></div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesB">
+      <div class="stage-row"><span class="stage-num">22</span><span class="stage-name" data-i18n="stage22_name">配體身份確認</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+    </div>
+
+    <!-- 候選卡片區 -->
+    <div class="candidate-section" id="candSection" style="display:none">
+      <div class="candidate-label" id="candLabel" data-i18n="cand_label_default">選擇用於口袋定義的配體</div>
+      <div class="candidate-grid" id="candGrid"></div>
+      <div class="confirm-btn-row">
+        <button class="btn btn-success" id="btnConfirmCand" onclick="confirmCandidate()" disabled><span data-i18n="btn_confirm_sel">✓ 確認選擇</span></button>
+        <span style="font-size:11px;color:var(--text3);align-self:center;" id="candHint" data-i18n="cand_hint">請先選擇一個配體</span>
+      </div>
+    </div>
+
+    <div class="log-box" id="logB" style="display:none"></div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnB" onclick="runEngineB()" disabled><span data-i18n="btn_run">▶ Run</span> Engine B</button>
+      <span class="action-note" id="noteB" data-i18n="note_b_wait">等待 Engine A 完成</span>
+    </div>
+    <div class="terminal-block" id="blockTerminalB" style="display:none;">
+      <div class="terminal-block-title" data-i18n="hint_terminal_b_title">終端執行 Engine B（人機互動，請在 MolGate 目錄開啟終端）</div>
+      <pre class="cli-pre" id="preCliB"></pre>
+      <button type="button" class="btn btn-ghost" id="btnCopyB" onclick="copyCliText('preCliB')" data-i18n="btn_copy">複製指令</button>
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div><div class="connector-label">stage_22_ligand.json</div><div class="connector-line"></div></div>
+
+<!-- ENGINE C -->
+<div class="engine" id="engC">
+  <div class="engine-header" onclick="toggle('engC')">
+    <div class="engine-badge">ENGINE C</div>
+    <div><div class="engine-title" data-i18n="engC_title">口袋中心計算</div><div class="engine-subtitle" data-i18n="engC_sub">Stage 23 → pocket_config.json</div></div>
+    <div class="engine-chevron">▼</div>
+  </div>
+  <div class="engine-body">
+    <div class="stage-list" id="stagesC">
+      <div class="stage-row"><span class="stage-num">23</span><span class="stage-name" data-i18n="stage23_name">重心計算 + Box size</span><span class="stage-val">—</span><span class="stage-status" style="display:none"></span></div>
+    </div>
+    <div class="log-box" id="logC" style="display:none"></div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnC" onclick="runEngineC()" disabled><span data-i18n="btn_run">▶ Run</span> Engine C</button>
+      <span class="action-note" id="noteC" data-i18n="note_c_wait">等待 Engine B 完成</span>
+    </div>
+    <div class="terminal-block" id="blockTerminalC" style="display:none;">
+      <div class="terminal-block-title" data-i18n="hint_terminal_c_title">終端執行 Engine C（口袋確認互動）</div>
+      <pre class="cli-pre" id="preCliC"></pre>
+      <button type="button" class="btn btn-ghost" id="btnCopyC" onclick="copyCliText('preCliC')" data-i18n="btn_copy">複製指令</button>
+    </div>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="summary-bar" id="summary">
+  <div class="summary-title" data-i18n="summary_title">MODULE 4 COMPLETE ✓</div>
+  <div class="summary-grid">
+    <div class="summary-item"><div class="lbl" data-i18n="sum_ligand">選定配體</div><div class="val" id="sumHet">—</div></div>
+    <div class="summary-item"><div class="lbl" data-i18n="sum_center">重心座標</div><div class="val" id="sumCenter">—</div></div>
+    <div class="summary-item"><div class="lbl" data-i18n="sum_box">Box size</div><div class="val" id="sumBox">—</div></div>
+    <div class="summary-item"><div class="lbl" data-i18n="sum_pad">Padding</div><div class="val" id="sumPad">—</div></div>
+    <div class="summary-item"><div class="lbl">pocket_config.json</div><div class="val" style="color:var(--green)" data-i18n="sum_ready">ready_for_docking = true</div></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- 座標確認 Modal -->
+<div class="modal-overlay" id="coordModal">
+  <div class="modal">
+    <div class="modal-title" data-i18n="modal_title">STAGE 23 — 口袋座標確認</div>
+    <div class="modal-sub" id="modalSub">TLF chain A res 601 · 18 heavy atoms</div>
+
+    <div class="coord-row">
+      <span class="coord-label">center_x</span>
+      <span class="coord-val" id="v_cx">—</span>
+      <input class="coord-input" id="i_cx" type="number" step="0.001">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">center_y</span>
+      <span class="coord-val" id="v_cy">—</span>
+      <input class="coord-input" id="i_cy" type="number" step="0.001">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">center_z</span>
+      <span class="coord-val" id="v_cz">—</span>
+      <input class="coord-input" id="i_cz" type="number" step="0.001">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">box_size_x</span>
+      <span class="coord-val" id="v_bx">—</span>
+      <input class="coord-input" id="i_bx" type="number" step="0.1">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">box_size_y</span>
+      <span class="coord-val" id="v_by">—</span>
+      <input class="coord-input" id="i_by" type="number" step="0.1">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">box_size_z</span>
+      <span class="coord-val" id="v_bz">—</span>
+      <input class="coord-input" id="i_bz" type="number" step="0.1">
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">padding</span>
+      <span class="coord-val" id="v_pad">10.0 Å</span>
+      <input class="coord-input" id="i_pad" type="number" step="0.5">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnEdit" onclick="toggleEdit()" data-i18n="btn_edit">修改座標</button>
+      <button class="btn btn-success" id="btnAccept" onclick="acceptCoords()" data-i18n="btn_accept">✓ 接受</button>
+    </div>
+    <div class="modal-note" id="modalNote" data-i18n="modal_note">座標由共結晶配體重心計算。若數值異常，請按「修改座標」手動調整。</div>
+  </div>
+</div>
+
+<script>
+const I18N = {
+  zh: {
+    page_title: 'MolGate — Module 4 口袋定義',
+    lbl_session: 'session',
+    lbl_target: 'target',
+    lbl_pdb: 'pdb',
+    engA_title: 'HETATM 掃描過濾',
+    engA_sub: 'Stage 21 → 候選配體列表',
+    stage21_name: 'HETATM 掃描（五層過濾）',
+    btn_run: '▶ 執行',
+    note_a: '全自動，無需介入',
+    engB_title: '配體身份確認',
+    engB_sub: 'Stage 22 → 選定配體（人機）',
+    stage22_name: '配體身份確認',
+    cand_label_default: '選擇用於口袋定義的配體',
+    cand_label_target: '★ 目標配體已識別，請確認使用哪條 chain',
+    cand_hint: '請先選擇一個配體',
+    cand_selected: '已選：{het} chain {ch}',
+    btn_confirm_sel: '✓ 確認選擇',
+    note_b_wait: '等待 Engine A 完成',
+    note_b_ready: '就緒，點擊確認配體',
+    note_b_select: '請選擇配體後確認',
+    engC_title: '口袋中心計算',
+    engC_sub: 'Stage 23 → pocket_config.json',
+    stage23_name: '重心計算 + Box size',
+    note_c_wait: '等待 Engine B 完成',
+    note_c_ready: '就緒，計算口袋中心',
+    summary_title: 'MODULE 4 完成 ✓',
+    sum_ligand: '選定配體',
+    sum_center: '重心座標',
+    sum_box: 'Box size',
+    sum_pad: 'Padding',
+    sum_ready: 'ready_for_docking = true',
+    modal_title: 'STAGE 23 — 口袋座標確認',
+    modal_note: '座標由共結晶配體重心計算。若數值異常，請按「修改座標」手動調整。',
+    btn_edit: '修改座標',
+    btn_edit_cancel: '取消修改',
+    btn_accept: '✓ 接受',
+    btn_apply_edit: '套用修改',
+    badge_ready: '就緒',
+    badge_running: '執行中…',
+    badge_action: '需操作',
+    badge_done: '完成 ✓',
+    badge_error: '錯誤',
+    st_auto: 'AUTO',
+    st_manual: 'MANUAL',
+    st_action: 'ACTION NEEDED',
+    st_confirm: 'CONFIRM',
+    log21_start: '[Stage 21] HETATM 掃描過濾…',
+    log21_het: '  → Master Index het_id：TLF',
+    log21_scan: '  ✓ 掃描到 HETATM 殘基：21 個',
+    log21_buf: '  ✓ 緩衝／離子排除：6 個',
+    log21_gly: '  ✓ 糖基化殘基排除：11 個（NAG × 11）',
+    log21_cof: '  ✓ 輔因子排除：0 個',
+    log21_mw: '  ✓ MW 過濾：0 個',
+    log21_tgt: '  ★ 目標配體（TLF）：2 個',
+    log21_other: '  其他候選：2 個（COH × 2）',
+    stage21_result: '目標 2 個 + 其他 2 個',
+    log22_start: '[Stage 22] 配體身份確認…',
+    log22_idx: '  → Master Index het_id：TLF | 候選數：{n}',
+    log22_auto: '  ✓ 自動比對成功，無需介入',
+    log22_multi: '  ⚠ 找到 {n} 個目標配體，需確認 chain',
+    stage22_need_ch: '需要確認 chain',
+    log22_pick: '  ✓ 選定：{het} chain {ch}',
+    log23_start: '[Stage 23] 口袋中心計算…',
+    log23_lig: '  → 配體：{het} chain {ch} res {rs}',
+    log23_pad: '  → Padding：10.0 Å（預設）',
+    log23_atoms: '  ✓ 重原子數：{n}',
+    log23_cent: '  ✓ 重心：({x}, {y}, {z})',
+    log23_box: '  ✓ Box：{bx} × {by} × {bz} Å',
+    log23_open: '  → 開啟座標確認視窗…',
+    modal_sub: '{het} chain {ch} res {rs} · {n} 個重原子',
+    cand_badge_tgt: '★ 目標配體',
+    cand_badge_other: '其他候選',
+    cand_atoms: '個原子',
+    api_offline: '無法連上 Module 4 後端。請在 MolGate 目錄執行：py molgate_module4_server.py，再開啟 http://127.0.0.1:8766/?session=…&target=… 並重新整理。',
+    prep_need_m3: '需先完成 Module 3 Engine B（prep_decisions.ready_for_engine_e）',
+    hint_terminal_b_title: '終端執行 Engine B（人機互動，於 MolGate 目錄）',
+    hint_terminal_c_title: '終端執行 Engine C（座標確認，於 MolGate 目錄）',
+    btn_copy: '複製指令',
+    btn_copy_engine_b: '複製 Engine B 指令',
+    btn_copy_engine_c: '複製 Engine C 指令',
+    cli_copied: '已複製到剪貼簿',
+    log_a_from_api: '（後端 stdout/stderr）',
+    note_after_a_api: 'Engine A 已完成。請在終端執行下方 Engine B 指令。',
+    note_after_b_cli: 'Engine B 完成後按「重新整理狀態」或等待自動輪詢；再執行 Engine C 指令。',
+  },
+  en: {
+    page_title: 'MolGate — Module 4 Pocket Definition',
+    lbl_session: 'session',
+    lbl_target: 'target',
+    lbl_pdb: 'pdb',
+    engA_title: 'HETATM scan & filter',
+    engA_sub: 'Stage 21 → candidate ligand list',
+    stage21_name: 'HETATM scan (five-layer filter)',
+    btn_run: '▶ Run',
+    note_a: 'Fully automatic; no input required',
+    engB_title: 'Ligand identity confirmation',
+    engB_sub: 'Stage 22 → selected ligand (HITL)',
+    stage22_name: 'Ligand identity confirmation',
+    cand_label_default: 'Select ligand for pocket definition',
+    cand_label_target: '★ Target ligand identified — confirm which chain',
+    cand_hint: 'Select a ligand first',
+    cand_selected: 'Selected: {het} chain {ch}',
+    btn_confirm_sel: '✓ Confirm selection',
+    note_b_wait: 'Waiting for Engine A to finish',
+    note_b_ready: 'Ready — run Engine B to confirm ligand',
+    note_b_select: 'Select a ligand, then confirm',
+    engC_title: 'Pocket center calculation',
+    engC_sub: 'Stage 23 → pocket_config.json',
+    stage23_name: 'Centroid + box size',
+    note_c_wait: 'Waiting for Engine B to finish',
+    note_c_ready: 'Ready — compute pocket center',
+    summary_title: 'MODULE 4 COMPLETE ✓',
+    sum_ligand: 'Selected ligand',
+    sum_center: 'Center coordinates',
+    sum_box: 'Box size',
+    sum_pad: 'Padding',
+    sum_ready: 'ready_for_docking = true',
+    modal_title: 'STAGE 23 — Pocket coordinates',
+    modal_note: 'Center is the cocrystal ligand centroid. If values look wrong, use “Edit coordinates” to adjust.',
+    btn_edit: 'Edit coordinates',
+    btn_edit_cancel: 'Cancel edit',
+    btn_accept: '✓ Accept',
+    btn_apply_edit: 'Apply changes',
+    badge_ready: 'READY',
+    badge_running: 'RUNNING…',
+    badge_action: 'ACTION NEEDED',
+    badge_done: 'DONE ✓',
+    badge_error: 'ERROR',
+    st_auto: 'AUTO',
+    st_manual: 'MANUAL',
+    st_action: 'ACTION NEEDED',
+    st_confirm: 'CONFIRM',
+    log21_start: '[Stage 21] HETATM scan & filter…',
+    log21_het: '  → Master Index het_id: TLF',
+    log21_scan: '  ✓ HETATM residues scanned: 21',
+    log21_buf: '  ✓ Buffer / ions excluded: 6',
+    log21_gly: '  ✓ Glycan residues excluded: 11 (NAG × 11)',
+    log21_cof: '  ✓ Cofactors excluded: 0',
+    log21_mw: '  ✓ MW filter: 0',
+    log21_tgt: '  ★ Target ligands (TLF): 2',
+    log21_other: '  Other candidates: 2 (COH × 2)',
+    stage21_result: '2 target + 2 other',
+    log22_start: '[Stage 22] Ligand identity confirmation…',
+    log22_idx: '  → Master Index het_id: TLF | candidates: {n}',
+    log22_auto: '  ✓ Auto-match OK; no input needed',
+    log22_multi: '  ⚠ {n} target ligands found — confirm chain',
+    stage22_need_ch: 'Chain confirmation needed',
+    log22_pick: '  ✓ Selected: {het} chain {ch}',
+    log23_start: '[Stage 23] Pocket center calculation…',
+    log23_lig: '  → Ligand: {het} chain {ch} res {rs}',
+    log23_pad: '  → Padding: 10.0 Å (default)',
+    log23_atoms: '  ✓ Heavy atoms: {n}',
+    log23_cent: '  ✓ Centroid: ({x}, {y}, {z})',
+    log23_box: '  ✓ Box: {bx} × {by} × {bz} Å',
+    log23_open: '  → Opening coordinate dialog…',
+    modal_sub: '{het} chain {ch} res {rs} · {n} heavy atoms',
+    cand_badge_tgt: '★ Target ligand',
+    cand_badge_other: 'Other candidate',
+    cand_atoms: 'atoms',
+    api_offline: 'Cannot reach the Module 4 backend. Run: py molgate_module4_server.py from the MolGate folder, then open http://127.0.0.1:8766/?session=…&target=… and refresh.',
+    prep_need_m3: 'Finish Module 3 Engine B first (prep_decisions.ready_for_engine_e).',
+    hint_terminal_b_title: 'Run Engine B in a terminal (HITL), from the MolGate folder',
+    hint_terminal_c_title: 'Run Engine C in a terminal (coordinate confirm), from the MolGate folder',
+    btn_copy: 'Copy command',
+    btn_copy_engine_b: 'Copy Engine B command',
+    btn_copy_engine_c: 'Copy Engine C command',
+    cli_copied: 'Copied to clipboard',
+    log_a_from_api: '(backend stdout/stderr)',
+    note_after_a_api: 'Engine A is done. Run the Engine B command below in a terminal.',
+    note_after_b_cli: 'After Engine B finishes, wait for auto-refresh or reload; then run Engine C.',
+  },
+};
+
+let LANG = localStorage.getItem('molgate_m4_lang') || 'zh';
+
+function t(key, vars) {
+  let s = (I18N[LANG] && I18N[LANG][key]) || I18N.zh[key] || key;
+  if (vars && typeof s === 'string') {
+    Object.keys(vars).forEach(function (k) {
+      s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), String(vars[k]));
+    });
+  }
+  return s;
+}
+
+function applyLang() {
+  document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-Hant';
+  document.title = t('page_title');
+  document.querySelectorAll('[data-i18n]').forEach(function (el) {
+    var k = el.getAttribute('data-i18n');
+    if (k) el.textContent = t(k);
+  });
+  document.getElementById('langZh').classList.toggle('active', LANG === 'zh');
+  document.getElementById('langEn').classList.toggle('active', LANG === 'en');
+  localStorage.setItem('molgate_m4_lang', LANG);
+  refreshModalButtons();
+  syncBadgesFromDOM();
+  if (M4.apiOk) {
+    refreshM4Status();
+  }
+}
+
+function syncBadgesFromDOM() {
+  ['engA', 'engB', 'engC'].forEach(function (id) {
+    const el = document.getElementById(id);
+    const state = el.classList.contains('done')
+      ? 'done'
+      : el.classList.contains('running')
+        ? 'running'
+        : el.classList.contains('needs-input')
+          ? 'needs-input'
+          : el.classList.contains('error')
+            ? 'error'
+            : el.classList.contains('active')
+              ? 'active'
+              : null;
+    if (state) {
+      setEngineState(id, state);
+    } else {
+      const badge = el.querySelector('.engine-badge');
+      const prefix = { engA: 'ENGINE A', engB: 'ENGINE B', engC: 'ENGINE C' }[id];
+      badge.textContent = prefix;
+    }
+  });
+}
+
+function setLang(code) {
+  LANG = code === 'en' ? 'en' : 'zh';
+  applyLang();
+}
+
+document.getElementById('langZh').addEventListener('click', function () { setLang('zh'); });
+document.getElementById('langEn').addEventListener('click', function () { setLang('en'); });
+
+const M4 = { apiOk: false, pollTimer: null, runningA: false };
+
+function parseQuerySession() {
+  const q = new URLSearchParams(location.search);
+  const s = q.get('session');
+  const tg = q.get('target');
+  if (s && /^[a-fA-F0-9]{16}$/i.test(s)) {
+    document.getElementById('sid').textContent = s;
+  }
+  if (tg) {
+    document.getElementById('tgt').textContent = tg.trim();
+  }
+}
+
+function currentSessionId() {
+  return (document.getElementById('sid').textContent || '').trim();
+}
+
+function currentTarget() {
+  return (document.getElementById('tgt').textContent || '').trim();
+}
+
+async function fetchM4StatusJson() {
+  const sid = currentSessionId();
+  const r = await fetch('/api/module4/status?session=' + encodeURIComponent(sid));
+  if (!r.ok) {
+    throw new Error('HTTP ' + r.status);
+  }
+  return r.json();
+}
+
+function copyCliText(preId) {
+  const el = document.getElementById(preId);
+  if (!el || !el.textContent) {
+    return;
+  }
+  const txt = el.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(
+      function () {
+        window.alert(t('cli_copied'));
+      },
+      function () {
+        window.prompt(t('btn_copy'), txt);
+      }
+    );
+  } else {
+    window.prompt(t('btn_copy'), txt);
+  }
+}
+
+function setStageRowManual(listId, idx, val, statusClass, statusText) {
+  const rows = document.querySelectorAll('#' + listId + ' .stage-row');
+  if (!rows[idx]) {
+    return;
+  }
+  rows[idx].querySelector('.stage-val').textContent = val;
+  const s = rows[idx].querySelector('.stage-status');
+  s.className = 'stage-status ' + statusClass;
+  s.textContent = statusText;
+  s.style.display = '';
+}
+
+function applyM4Status(d) {
+  const banner = document.getElementById('apiBanner');
+  if (!d.ok) {
+    banner.style.display = 'block';
+    banner.textContent = d.error || 'session error';
+    return;
+  }
+  banner.style.display = 'none';
+
+  if (d.target) {
+    document.getElementById('tgt').textContent = d.target;
+  }
+  if (d.pdb_id) {
+    document.getElementById('pdb').textContent = d.pdb_id;
+  }
+
+  const noteA = document.getElementById('noteA');
+  if (!d.prep_ready) {
+    noteA.textContent = t('prep_need_m3');
+    document.getElementById('btnA').disabled = true;
+    setEngineState('engA', '');
+    document.getElementById('blockTerminalB').style.display = 'none';
+    document.getElementById('blockTerminalC').style.display = 'none';
+    syncBadgesFromDOM();
+    return;
+  }
+
+  const ea = d.engine_a;
+  if (ea.complete) {
+    const st = (ea.status || 'PASS').toUpperCase();
+    const cls = st === 'WARN' ? 's-warn' : 's-auto';
+    setStageRowManual('stagesA', 0, ea.summary || '—', cls, st);
+    setEngineState('engA', 'done');
+    document.getElementById('btnA').disabled = true;
+    noteA.textContent = t('note_a');
+  } else if (!M4.runningA) {
+    noteA.textContent = t('note_a');
+    document.getElementById('btnA').disabled = false;
+    setEngineState('engA', 'active');
+    const row = document.querySelector('#stagesA .stage-row');
+    if (row) {
+      row.querySelector('.stage-val').textContent = '—';
+      const s = row.querySelector('.stage-status');
+      s.style.display = 'none';
+    }
+  }
+
+  const eb = d.engine_b;
+  if (eb.complete) {
+    const st = (eb.status || 'AUTO').toUpperCase();
+    const cls = st === 'MANUAL' ? 's-manual' : 's-auto';
+    setStageRowManual('stagesB', 0, eb.summary || '—', cls, st);
+    setEngineState('engB', 'done');
+    document.getElementById('btnB').disabled = true;
+    document.getElementById('btnB').textContent = t('btn_copy_engine_b');
+    document.getElementById('blockTerminalB').style.display = 'none';
+    document.getElementById('noteB').textContent = t('note_after_b_cli');
+    document.getElementById('engB').classList.add('open');
+  } else if (ea.complete) {
+    document.getElementById('preCliB').textContent = d.cli.engine_b || '';
+    document.getElementById('blockTerminalB').style.display = '';
+    document.getElementById('btnB').disabled = false;
+    document.getElementById('btnB').textContent = t('btn_copy_engine_b');
+    document.getElementById('noteB').textContent = t('note_after_a_api');
+    setEngineState('engB', 'active');
+    document.getElementById('engB').classList.add('open');
+  } else {
+    document.getElementById('blockTerminalB').style.display = 'none';
+    document.getElementById('btnB').disabled = true;
+    document.getElementById('btnB').innerHTML = '<span data-i18n="btn_run">' + t('btn_run') + '</span> Engine B';
+    document.getElementById('noteB').textContent = t('note_b_wait');
+    setEngineState('engB', '');
+  }
+
+  const ec = d.engine_c;
+  if (ec.complete && ec.pocket_config) {
+    const pc = ec.pocket_config;
+    setStageRowManual(
+      'stagesC',
+      0,
+      ec.summary || '—',
+      's-confirm',
+      t('st_confirm')
+    );
+    setEngineState('engC', 'done');
+    document.getElementById('btnC').disabled = true;
+    document.getElementById('btnC').textContent = t('btn_copy_engine_c');
+    document.getElementById('blockTerminalC').style.display = 'none';
+    document.getElementById('noteC').textContent = 'pocket_config.json';
+    document.getElementById('sumHet').textContent =
+      (pc.het_id || '—') + ' chain ' + (pc.chain || '');
+    document.getElementById('sumCenter').textContent =
+      '(' + pc.center_x + ', ' + pc.center_y + ', ' + pc.center_z + ')';
+    document.getElementById('sumBox').textContent =
+      pc.box_size_x + ' × ' + pc.box_size_y + ' × ' + pc.box_size_z + ' Å';
+    document.getElementById('sumPad').textContent = (pc.padding != null ? pc.padding : '—') + ' Å';
+    document.getElementById('summary').classList.add('visible');
+    document.getElementById('engC').classList.add('open');
+  } else if (eb.complete) {
+    document.getElementById('preCliC').textContent = d.cli.engine_c || '';
+    document.getElementById('blockTerminalC').style.display = '';
+    document.getElementById('btnC').disabled = false;
+    document.getElementById('btnC').textContent = t('btn_copy_engine_c');
+    document.getElementById('noteC').textContent = t('note_c_ready');
+    setEngineState('engC', 'active');
+    document.getElementById('engC').classList.add('open');
+  } else {
+    document.getElementById('blockTerminalC').style.display = 'none';
+    document.getElementById('btnC').disabled = true;
+    document.getElementById('btnC').innerHTML = '<span data-i18n="btn_run">' + t('btn_run') + '</span> Engine C';
+    document.getElementById('noteC').textContent = t('note_c_wait');
+    setEngineState('engC', '');
+  }
+
+  syncBadgesFromDOM();
+}
+
+async function refreshM4Status() {
+  if (!M4.apiOk) {
+    return;
+  }
+  try {
+    const d = await fetchM4StatusJson();
+    applyM4Status(d);
+  } catch (e) {
+    document.getElementById('apiBanner').style.display = 'block';
+    document.getElementById('apiBanner').textContent = String(e);
+  }
+}
+
+async function checkApiAndStartPoll() {
+  try {
+    const r = await fetch('/api/module4/status?session=');
+    M4.apiOk = r.ok;
+  } catch (e) {
+    M4.apiOk = false;
+  }
+  if (!M4.apiOk) {
+    document.getElementById('apiBanner').style.display = 'block';
+    document.getElementById('apiBanner').textContent = t('api_offline');
+    return;
+  }
+  document.getElementById('apiBanner').style.display = 'none';
+  try {
+    await refreshM4Status();
+  } catch (e) {}
+  if (M4.pollTimer) {
+    clearInterval(M4.pollTimer);
+  }
+  M4.pollTimer = setInterval(refreshM4Status, 4000);
+}
+
+function startM4Panel() {
+  parseQuerySession();
+  checkApiAndStartPoll();
+}
+
+const STATE = {
+  candidates: [],
+  selected: null,
+  pocket: {},
+  editing: false,
+};
+
+const MOCK = {
+  target_candidates: [
+    {resname:'TLF',chain:'A',resseq:601,mw_estimate:234,heavy_atom_count:18,match:'target'},
+    {resname:'TLF',chain:'B',resseq:601,mw_estimate:234,heavy_atom_count:18,match:'target'},
+  ],
+  other_candidates: [
+    {resname:'COH',chain:'A',resseq:602,mw_estimate:559,heavy_atom_count:43,match:'other'},
+    {resname:'COH',chain:'B',resseq:602,mw_estimate:559,heavy_atom_count:43,match:'other'},
+  ],
+  pocket: {cx:165.423,cy:185.645,cz:192.592,bx:28.5,by:23.8,bz:25.8,pad:10.0,atoms:18},
+};
+
+function toggle(id) { document.getElementById(id).classList.toggle('open'); }
+
+function setEngineState(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('active','running','needs-input','done','error');
+  if (state) el.classList.add(state);
+  const badge = el.querySelector('.engine-badge');
+  const prefix = {engA:'ENGINE A',engB:'ENGINE B',engC:'ENGINE C'}[id];
+  const map = {
+    active: t('badge_ready'),
+    running: t('badge_running'),
+    'needs-input': t('badge_action'),
+    done: t('badge_done'),
+    error: t('badge_error'),
+  };
+  badge.textContent = state ? prefix + ' · ' + (map[state] || state) : prefix;
+}
+
+function setStageResult(listId, idx, val, cls, txtKey) {
+  const rows = document.querySelectorAll('#' + listId + ' .stage-row');
+  if (!rows[idx]) return;
+  rows[idx].querySelector('.stage-val').textContent = val;
+  const s = rows[idx].querySelector('.stage-status');
+  s.className = 'stage-status ' + cls;
+  s.textContent = t(txtKey || 'st_auto');
+  s.style.display = '';
+}
+
+function appendLog(id, msg, cls) {
+  const b = document.getElementById(id);
+  b.style.display = '';
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  b.appendChild(d);
+  b.scrollTop = b.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+function refreshModalButtons() {
+  const ed = STATE.editing;
+  document.getElementById('btnEdit').textContent = ed ? t('btn_edit_cancel') : t('btn_edit');
+  document.getElementById('btnAccept').textContent = ed ? t('btn_apply_edit') : t('btn_accept');
+}
+
+async function runEngineA() {
+  if (M4.apiOk) {
+    M4.runningA = true;
+    document.getElementById('btnA').disabled = true;
+    setEngineState('engA', 'running');
+    const logA = document.getElementById('logA');
+    logA.style.display = '';
+    logA.innerHTML = '';
+    appendLog('logA', t('log_a_from_api'), 'info');
+    try {
+      const res = await fetch('/api/module4/run-engine-a', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session: currentSessionId(),
+          target: currentTarget() || undefined,
+        }),
+      });
+      const j = await res.json();
+      if (j.log) {
+        j.log.split('\n').forEach(function (line) {
+          appendLog('logA', line, j.ok ? '' : 'err');
+        });
+      }
+      if (j.status) {
+        applyM4Status(j.status);
+      } else {
+        await refreshM4Status();
+      }
+      if (j.ok) {
+        document.getElementById('noteB').textContent = t('note_after_a_api');
+      }
+    } catch (e) {
+      appendLog('logA', String(e), 'err');
+    }
+    M4.runningA = false;
+    return;
+  }
+
+  document.getElementById('btnA').disabled = true;
+  setEngineState('engA','running');
+  const log = function (m, c) { appendLog('logA', m, c || ''); };
+
+  await sleep(400);
+  log(t('log21_start'));
+  await sleep(300);
+  log(t('log21_het'));
+  await sleep(500);
+  log(t('log21_scan'));
+  await sleep(200);
+  log(t('log21_buf'));
+  log(t('log21_gly'));
+  log(t('log21_cof'));
+  log(t('log21_mw'));
+  await sleep(300);
+  log(t('log21_tgt'), 'ok');
+  log(t('log21_other'));
+  await sleep(200);
+
+  setStageResult('stagesA', 0, t('stage21_result'), 's-auto', 'st_auto');
+  setEngineState('engA','done');
+
+  document.getElementById('btnB').disabled = false;
+  document.getElementById('noteB').textContent = t('note_b_ready');
+  setEngineState('engB','active');
+  document.getElementById('engB').classList.add('open');
+}
+
+async function runEngineB() {
+  if (M4.apiOk) {
+    copyCliText('preCliB');
+    return;
+  }
+
+  document.getElementById('btnB').disabled = true;
+  setEngineState('engB','running');
+  appendLog('logB', t('log22_start'));
+  await sleep(500);
+
+  const all = MOCK.target_candidates.concat(MOCK.other_candidates);
+  STATE.candidates = all;
+
+  appendLog('logB', t('log22_idx', { n: all.length }));
+
+  if (MOCK.target_candidates.length === 1) {
+    STATE.selected = MOCK.target_candidates[0];
+    setStageResult('stagesB', 0,
+      STATE.selected.resname + ' chain ' + STATE.selected.chain, 's-auto', 'st_auto');
+    appendLog('logB', t('log22_auto'), 'ok');
+    setEngineState('engB','done');
+    unlockEngineC();
+  } else {
+    appendLog('logB', t('log22_multi', { n: MOCK.target_candidates.length }), 'warn');
+    setStageResult('stagesB', 0, t('stage22_need_ch'), 's-manual', 'st_action');
+    setEngineState('engB','needs-input');
+    renderCandidates(all);
+    document.getElementById('noteB').textContent = t('note_b_select');
+  }
+}
+
+function renderCandidates(candidates) {
+  const grid = document.getElementById('candGrid');
+  const section = document.getElementById('candSection');
+  const label = document.getElementById('candLabel');
+
+  const hasTarget = candidates.some(function (c) { return c.match === 'target'; });
+  label.textContent = hasTarget ? t('cand_label_target') : t('cand_label_default');
+
+  grid.innerHTML = '';
+  candidates.forEach(function (c, i) {
+    const isTarget = c.match === 'target';
+    const div = document.createElement('div');
+    div.className = 'cand-card' + (isTarget ? ' target-card' : '');
+    const badge = isTarget ? t('cand_badge_tgt') : t('cand_badge_other');
+    div.innerHTML =
+      '<div class="cand-check">✓</div>' +
+      '<div class="cand-het">' + c.resname + '</div>' +
+      '<div class="cand-info">chain ' + c.chain + ' · res ' + c.resseq + '<br>~' + c.mw_estimate +
+      ' Da · ' + c.heavy_atom_count + ' ' + t('cand_atoms') + '</div>' +
+      '<div class="cand-badge ' + (isTarget ? 'badge-target' : 'badge-other') + '">' + badge + '</div>';
+    div.onclick = function () { selectCandidate(i, div); };
+    grid.appendChild(div);
+  });
+  section.style.display = '';
+}
+
+function selectCandidate(idx, el) {
+  document.querySelectorAll('.cand-card').forEach(function (c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+  STATE.selected = STATE.candidates[idx];
+  document.getElementById('btnConfirmCand').disabled = false;
+  document.getElementById('candHint').textContent = t('cand_selected', {
+    het: STATE.selected.resname,
+    ch: STATE.selected.chain,
+  });
+}
+
+function confirmCandidate() {
+  const s = STATE.selected;
+  setStageResult('stagesB', 0,
+    s.resname + ' chain ' + s.chain + ' res ' + s.resseq, 's-manual', 'st_manual');
+  appendLog('logB', t('log22_pick', { het: s.resname, ch: s.chain }), 'ok');
+  document.getElementById('candSection').style.display = 'none';
+  setEngineState('engB','done');
+  unlockEngineC();
+}
+
+function unlockEngineC() {
+  document.getElementById('btnC').disabled = false;
+  document.getElementById('noteC').textContent = t('note_c_ready');
+  setEngineState('engC','active');
+  document.getElementById('engC').classList.add('open');
+}
+
+async function runEngineC() {
+  if (M4.apiOk) {
+    copyCliText('preCliC');
+    return;
+  }
+
+  document.getElementById('btnC').disabled = true;
+  setEngineState('engC','running');
+  appendLog('logC', t('log23_start'));
+  await sleep(400);
+
+  const s = STATE.selected || MOCK.target_candidates[0];
+  appendLog('logC', t('log23_lig', { het: s.resname, ch: s.chain, rs: s.resseq }));
+  await sleep(300);
+  appendLog('logC', t('log23_pad'));
+  await sleep(600);
+
+  const p = MOCK.pocket;
+  appendLog('logC', t('log23_atoms', { n: p.atoms }));
+  appendLog('logC', t('log23_cent', { x: p.cx, y: p.cy, z: p.cz }), 'ok');
+  appendLog('logC', t('log23_box', { bx: p.bx, by: p.by, bz: p.bz }), 'ok');
+  await sleep(200);
+  appendLog('logC', t('log23_open'), 'info');
+
+  STATE.pocket = p;
+  openCoordModal(s, p);
+}
+
+function openCoordModal(s, p) {
+  document.getElementById('modalSub').textContent = t('modal_sub', {
+    het: s.resname, ch: s.chain, rs: s.resseq, n: p.atoms,
+  });
+  [['cx',p.cx],['cy',p.cy],['cz',p.cz],['bx',p.bx],['by',p.by],['bz',p.bz],['pad',p.pad]].forEach(function (kv) {
+    const k = kv[0], v = kv[1];
+    document.getElementById('v_' + k).textContent = k === 'pad' ? v + ' Å' : v;
+    document.getElementById('i_' + k).value = v;
+  });
+  document.getElementById('coordModal').classList.add('open');
+}
+
+function toggleEdit() {
+  STATE.editing = !STATE.editing;
+  const vals = document.querySelectorAll('.coord-val');
+  const inputs = document.querySelectorAll('.coord-input');
+  vals.forEach(function (v) { v.style.display = STATE.editing ? 'none' : ''; });
+  inputs.forEach(function (i) { i.style.display = STATE.editing ? '' : 'none'; });
+  refreshModalButtons();
+}
+
+function acceptCoords() {
+  if (STATE.editing) {
+    ['cx','cy','cz','bx','by','bz','pad'].forEach(function (k) {
+      const v = document.getElementById('i_' + k).value;
+      document.getElementById('v_' + k).textContent = k === 'pad' ? v + ' Å' : v;
+    });
+    toggleEdit();
+    return;
+  }
+  document.getElementById('coordModal').classList.remove('open');
+
+  const p = STATE.pocket;
+  setStageResult('stagesC', 0,
+    '(' + p.cx + ', ' + p.cy + ', ' + p.cz + ')', 's-confirm', 'st_confirm');
+  setEngineState('engC','done');
+
+  const het = STATE.selected ? STATE.selected.resname : 'TLF';
+  const ch = STATE.selected ? STATE.selected.chain : 'A';
+  document.getElementById('sumHet').textContent = het + ' chain ' + ch;
+  document.getElementById('sumCenter').textContent = '(' + p.cx + ', ' + p.cy + ', ' + p.cz + ')';
+  document.getElementById('sumBox').textContent = p.bx + ' × ' + p.by + ' × ' + p.bz + ' Å';
+  document.getElementById('sumPad').textContent = p.pad + ' Å';
+  document.getElementById('summary').classList.add('visible');
+}
+
+applyLang();
+startM4Panel();
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+{
+  "_schema_version": "0.1",
+  "_description": "Runner 10-drug index draft. 先編修此檔，再同步到 master_index.json。",
+  "_notes": [
+    "runner 目前以 target 查 index，若 target 重複（如 COX2）需改 runner 支援 index_key 或 target alias。",
+    "family/state 先給可跑預設，後續可逐藥修正。",
+    "pocket_rule 建議維持 cocrystal_ligand:{HET_ID}。"
+  ],
+  "drugs": [
+    {
+      "drug": "Ibuprofen",
+      "runner_target": "COX2",
+      "suggested_index_key": "COX2",
+      "entry": {
+        "pdb_id": "5IKT",
+        "allowed": true,
+        "state": "bound",
+        "family": "cyclooxygenase",
+        "het_id": "TLF",
+        "cocrystal_het": "TLF",
+        "common_name": "Flurbiprofen",
+        "target_drug": "Ibuprofen",
+        "pocket_rule": "cocrystal_ligand:TLF",
+        "override": {},
+        "notes": "5IKT 共晶代碼 TLF；runner 藥物為 Ibuprofen。"
+      }
+    },
+    {
+      "drug": "Celecoxib",
+      "runner_target": "COX2",
+      "suggested_index_key": "COX2_CLX",
+      "entry": {
+        "pdb_id": "3LN1",
+        "allowed": true,
+        "state": "bound",
+        "family": "cyclooxygenase",
+        "het_id": "CLX",
+        "cocrystal_het": "CLX",
+        "common_name": "Celecoxib",
+        "target_drug": "Celecoxib",
+        "pocket_rule": "cocrystal_ligand:CLX",
+        "override": {},
+        "notes": "若 runner 仍用 target=COX2 查 index，需額外 alias/override 邏輯。"
+      }
+    },
+    {
+      "drug": "Oseltamivir",
+      "runner_target": "Neuraminidase",
+      "suggested_index_key": "NEURAMINIDASE",
+      "entry": {
+        "pdb_id": "2HU4",
+        "allowed": true,
+        "state": "bound",
+        "family": "hydrolase",
+        "het_id": "G39",
+        "cocrystal_het": "G39",
+        "common_name": "Oseltamivir",
+        "target_drug": "Oseltamivir",
+        "pocket_rule": "cocrystal_ligand:G39",
+        "override": {},
+        "notes": "流感神經氨酸酶。"
+      }
+    },
+    {
+      "drug": "Imatinib",
+      "runner_target": "ABLABL",
+      "suggested_index_key": "ABLABL",
+      "entry": {
+        "pdb_id": "1IEP",
+        "allowed": true,
+        "state": "bound",
+        "family": "kinase",
+        "het_id": "STI",
+        "cocrystal_het": "STI",
+        "common_name": "Imatinib",
+        "target_drug": "Imatinib",
+        "pocket_rule": "cocrystal_ligand:STI",
+        "override": {},
+        "notes": "BCR-ABL kinase。"
+      }
+    },
+    {
+      "drug": "Methotrexate",
+      "runner_target": "DHFR",
+      "suggested_index_key": "DHFR",
+      "entry": {
+        "pdb_id": "1U72",
+        "allowed": true,
+        "state": "bound",
+        "family": "oxidoreductase",
+        "het_id": "MTX",
+        "cocrystal_het": "MTX",
+        "common_name": "Methotrexate",
+        "target_drug": "Methotrexate",
+        "pocket_rule": "cocrystal_ligand:MTX",
+        "override": {},
+        "notes": "DHFR。"
+      }
+    },
+    {
+      "drug": "Fluconazole",
+      "runner_target": "CYP51",
+      "suggested_index_key": "CYP51",
+      "entry": {
+        "pdb_id": "4WMZ",
+        "allowed": true,
+        "state": "bound",
+        "family": "cytochrome_p450",
+        "het_id": "FLC",
+        "cocrystal_het": "FLC",
+        "common_name": "Fluconazole",
+        "target_drug": "Fluconazole",
+        "pocket_rule": "cocrystal_ligand:FLC",
+        "override": {},
+        "notes": "CYP51，heme 輔因子常見。必要時可在 override.keep_cofactors 加入 COH/HEM。"
+      }
+    },
+    {
+      "drug": "Sildenafil",
+      "runner_target": "PDE5",
+      "suggested_index_key": "PDE5",
+      "entry": {
+        "pdb_id": "2H42",
+        "allowed": true,
+        "state": "bound",
+        "family": "phosphodiesterase",
+        "het_id": "SLD",
+        "cocrystal_het": "SLD",
+        "common_name": "Sildenafil",
+        "target_drug": "Sildenafil",
+        "pocket_rule": "cocrystal_ligand:SLD",
+        "override": {},
+        "notes": "PDE5。"
+      }
+    },
+    {
+      "drug": "Acetazolamide",
+      "runner_target": "CA2",
+      "suggested_index_key": "CA2",
+      "entry": {
+        "pdb_id": "3HS4",
+        "allowed": true,
+        "state": "bound",
+        "family": "metalloenzyme",
+        "het_id": "AZM",
+        "cocrystal_het": "AZM",
+        "common_name": "Acetazolamide",
+        "target_drug": "Acetazolamide",
+        "pocket_rule": "cocrystal_ligand:AZM",
+        "override": {
+          "keep_cofactors": [
+            "ZN"
+          ]
+        },
+        "notes": "Carbonic anhydrase II，常見 Zn 參與。"
+      }
+    },
+    {
+      "drug": "Gefitinib",
+      "runner_target": "EGFR",
+      "suggested_index_key": "EGFR",
+      "entry": {
+        "pdb_id": "4WKQ",
+        "allowed": true,
+        "state": "bound",
+        "family": "kinase",
+        "het_id": "IRE",
+        "cocrystal_het": "IRE",
+        "common_name": "Gefitinib",
+        "target_drug": "Gefitinib",
+        "pocket_rule": "cocrystal_ligand:IRE",
+        "override": {},
+        "notes": "EGFR kinase。"
+      }
+    },
+    {
+      "drug": "Warfarin",
+      "runner_target": "VKOR",
+      "suggested_index_key": "VKOR",
+      "entry": {
+        "pdb_id": "6WV3",
+        "allowed": true,
+        "state": "bound",
+        "family": "oxidoreductase",
+        "het_id": "SWF",
+        "cocrystal_het": "SWF",
+        "common_name": "Warfarin",
+        "target_drug": "Warfarin",
+        "pocket_rule": "cocrystal_ligand:SWF",
+        "override": {},
+        "notes": "人源 VKOR + warfarin（6WV3）；共晶配體 CCD 為 SWF。4KP6 為 PDE4B，勿混用。"
+      }
+    }
+  ]
+}

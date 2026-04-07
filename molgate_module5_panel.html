@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MolGate — Module 5 Docking & Review</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0d0f12;--surface:#141720;--surface2:#1c2030;--border:#2a2f42;--border2:#363d55;
+  --text:#e8eaf2;--text2:#8890aa;--text3:#545d78;
+  --blue:#4a9eff;--blue-dim:#1a3a6e;
+  --green:#3ecf8e;--green-dim:#0d3d27;
+  --amber:#f5a623;--amber-dim:#3d2a08;
+  --red:#f56565;--red-dim:#3d1515;
+  --purple:#c084fc;--purple-dim:#2a1a40;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh;}
+
+/* ── Layout ── */
+.app{display:grid;grid-template-columns:1fr 320px;min-height:100vh;}
+.left{border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.right{display:flex;flex-direction:column;background:var(--surface);}
+
+/* ── Header ── */
+.header{padding:1.5rem 2rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{font-family:var(--mono);font-size:13px;color:var(--blue);letter-spacing:.08em;}
+.logo span{color:var(--text3);}
+.lang-btns{display:flex;gap:4px;}
+.lang-btn{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;}
+.lang-btn.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.session-info{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:right;line-height:1.8;}
+.session-info b{color:var(--text2);}
+
+/* ── Main scroll ── */
+.main{padding:1.5rem 2rem;flex:1;overflow-y:auto;}
+.pipeline-track{display:flex;flex-direction:column;gap:1.25rem;}
+
+/* ── Engine card ── */
+.engine{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;}
+.engine.active{border-color:var(--border2);}
+.engine.done{border-color:var(--green);}
+.engine.running{border-color:var(--blue);}
+.engine.needs-input{border-color:var(--amber);}
+.engine.error{border-color:var(--red);}
+.engine-header{padding:.875rem 1.25rem;display:flex;align-items:center;gap:.875rem;cursor:pointer;user-select:none;}
+.engine-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;letter-spacing:.06em;background:var(--surface2);color:var(--text3);border:1px solid var(--border);white-space:nowrap;}
+.engine.active .engine-badge{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.engine.done .engine-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
+.engine.running .engine-badge{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);animation:pulse 1.2s ease-in-out infinite;}
+.engine.needs-input .engine-badge{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.engine-title{font-size:14px;font-weight:500;color:var(--text);flex:1;}
+.engine-subtitle{font-size:11px;color:var(--text3);}
+.engine-chevron{color:var(--text3);font-size:11px;transition:transform .2s;}
+.engine.open .engine-chevron{transform:rotate(180deg);}
+.engine-body{display:none;border-top:1px solid var(--border);}
+.engine.open .engine-body{display:block;}
+
+/* ── Stage list ── */
+.stage-list{padding:.875rem 1.25rem;display:flex;flex-direction:column;gap:.4rem;}
+.stage-row{display:flex;align-items:center;gap:.625rem;padding:.4rem .625rem;border-radius:6px;background:var(--surface2);}
+.stage-num{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:24px;}
+.stage-name{font-size:12px;color:var(--text2);flex:1;}
+.stage-val{font-family:var(--mono);font-size:11px;color:var(--text);}
+.stage-status{font-size:10px;font-weight:500;padding:2px 6px;border-radius:3px;white-space:nowrap;}
+.s-auto{background:var(--green-dim);color:var(--green);}
+.s-warn{background:var(--amber-dim);color:var(--amber);}
+.s-manual{background:var(--purple-dim);color:var(--purple);border:1px solid #7c3aed;}
+.s-pass{background:var(--green-dim);color:var(--green);}
+.s-fail{background:var(--red-dim);color:var(--red);}
+
+/* ── Pose table ── */
+.pose-table-wrap{padding:0 1.25rem 1rem;}
+.pose-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.pose-table th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text3);font-weight:500;letter-spacing:.04em;}
+.pose-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);}
+.pose-table tr.best td{color:var(--green);}
+.pose-table tr.outside td{color:var(--text3);}
+.pose-badge{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;}
+.pb-best{background:var(--green-dim);color:var(--green);}
+.pb-out{background:var(--amber-dim);color:var(--amber);}
+
+/* ── Action bar ── */
+.action-bar{padding:.875rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;}
+.btn{font-family:var(--mono);font-size:12px;font-weight:500;padding:7px 16px;border-radius:6px;border:1px solid;cursor:pointer;transition:all .15s;letter-spacing:.03em;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-primary:hover:not(:disabled){background:#6ab3ff;}
+.btn-success{background:var(--green);color:#000;border-color:var(--green);}
+.btn-danger{background:transparent;color:var(--red);border-color:var(--red);}
+.btn-danger:hover:not(:disabled){background:var(--red-dim);}
+.btn-amber{background:transparent;color:var(--amber);border-color:var(--amber);}
+.btn-amber:hover:not(:disabled){background:var(--amber-dim);}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border2);}
+.btn-ghost:hover:not(:disabled){background:var(--surface2);}
+.action-note{font-size:11px;color:var(--text3);margin-left:auto;}
+
+/* ── Log ── */
+.log-box{margin:0 1.25rem .875rem;background:#0a0c10;border:1px solid var(--border);border-radius:6px;padding:.625rem .875rem;font-family:var(--mono);font-size:11px;color:var(--text3);max-height:120px;overflow-y:auto;line-height:1.8;}
+.log-box .ok{color:var(--green);}
+.log-box .warn{color:var(--amber);}
+.log-box .info{color:var(--blue);}
+
+/* ── Connector ── */
+.connector{display:flex;align-items:center;padding:0 1.5rem;gap:.5rem;}
+.connector-line{flex:1;height:1px;background:var(--border);}
+.connector-label{font-family:var(--mono);font-size:10px;color:var(--text3);}
+
+/* ── Review panel ── */
+.review-panel{margin:0 1.25rem .875rem;background:var(--surface2);border:1px solid var(--amber);border-radius:8px;padding:1rem;}
+.review-title{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.08em;margin-bottom:.75rem;}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;}
+.result-item{background:var(--surface);border-radius:6px;padding:.625rem .875rem;}
+.result-lbl{font-size:11px;color:var(--text3);margin-bottom:2px;}
+.result-val{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
+.result-val.green{color:var(--green);}
+.result-val.amber{color:var(--amber);}
+.decision-btns{display:flex;gap:.5rem;flex-wrap:wrap;}
+.retry-panel{margin-top:.875rem;background:var(--surface);border-radius:6px;padding:.75rem;display:none;}
+.retry-label{font-size:11px;color:var(--text3);margin-bottom:.5rem;}
+.retry-options{display:flex;flex-direction:column;gap:.375rem;}
+.retry-opt{display:flex;align-items:center;gap:.5rem;padding:.375rem .625rem;border-radius:4px;background:var(--surface2);cursor:pointer;border:1px solid transparent;}
+.retry-opt:hover{border-color:var(--border2);}
+.retry-opt.selected{border-color:var(--amber);background:var(--amber-dim);}
+.retry-opt-label{font-size:12px;color:var(--text2);}
+.retry-opt-sub{font-size:11px;color:var(--text3);}
+
+/* ── Summary ── */
+.summary-bar{margin-top:1.25rem;background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:1.25rem;display:none;}
+.summary-bar.visible{display:block;}
+.summary-title{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.08em;margin-bottom:.75rem;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.625rem;}
+.summary-item{background:var(--surface2);border-radius:6px;padding:.625rem .875rem;}
+.summary-item .lbl{font-size:11px;color:var(--text3);margin-bottom:2px;}
+.summary-item .val{font-family:var(--mono);font-size:12px;color:var(--text);}
+
+/* ── Right panel (LLM) ── */
+.right-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+.right-title{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;}
+.right-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);margin-left:6px;vertical-align:middle;}
+.llm-area{flex:1;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem;overflow-y:auto;}
+.llm-hint{font-size:12px;color:var(--text3);line-height:1.7;background:var(--surface2);border-radius:6px;padding:.75rem;}
+.llm-hint b{color:var(--text2);}
+.llm-msg{padding:.75rem;border-radius:6px;font-size:12px;line-height:1.7;}
+.llm-msg.system{background:var(--surface2);color:var(--text2);}
+.llm-msg.user{background:var(--blue-dim);color:var(--blue);text-align:right;}
+.llm-msg.assistant{background:var(--green-dim);color:var(--green);}
+.llm-input-bar{padding:.75rem 1.25rem;border-top:1px solid var(--border);flex-shrink:0;}
+.llm-input-row{display:flex;gap:.5rem;}
+.llm-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:.5rem .75rem;font-size:12px;color:var(--text);font-family:var(--sans);}
+.llm-input::placeholder{color:var(--text3);}
+.llm-send{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;border:1px solid var(--blue);background:var(--blue-dim);color:var(--blue);cursor:pointer;}
+.llm-send:hover{background:var(--blue);color:#fff;}
+.llm-context{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:.5rem;}
+</style>
+</head>
+<body>
+
+<div class="app">
+<!-- ══ LEFT：Pipeline ══ -->
+<div class="left">
+  <div class="header">
+    <div>
+      <div class="logo">Mol<span>Gate</span> / module-5 / docking</div>
+      <div class="session-info" style="margin-top:2px;">
+        target <b id="tgt">COX2</b> · pdb <b id="pdb">5IKT</b> · drug <b id="drug">Ibuprofen</b>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="lang-btns">
+        <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+        <button class="lang-btn" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+  <div class="pipeline-track">
+
+  <!-- ENGINE A -->
+  <div class="engine active open" id="engA">
+    <div class="engine-header" onclick="toggle('engA')">
+      <div class="engine-badge" id="badgeA">ENGINE A</div>
+      <div>
+        <div class="engine-title" data-zh="Docking 執行層" data-en="Docking execution layer">Docking 執行層</div>
+        <div class="engine-subtitle" data-zh="Stage 24 / 25 / 26 → docking_result.json" data-en="Stage 24 / 25 / 26 → docking_result.json">Stage 24 / 25 / 26 → docking_result.json</div>
+      </div>
+      <div class="engine-chevron">▼</div>
+    </div>
+    <div class="engine-body">
+      <div class="stage-list">
+        <div class="stage-row"><span class="stage-num">24</span><span class="stage-name" data-zh="AutoDock Vina 執行" data-en="AutoDock Vina execution">AutoDock Vina 執行</span><span class="stage-val" id="v24">—</span><span class="stage-status s-auto" id="s24" style="display:none">AUTO</span></div>
+        <div class="stage-row"><span class="stage-num">25</span><span class="stage-name" data-zh="Pose QC" data-en="Pose QC">Pose QC</span><span class="stage-val" id="v25">—</span><span class="stage-status" id="s25" style="display:none"></span></div>
+        <div class="stage-row"><span class="stage-num">26</span><span class="stage-name" data-zh="結果寫入" data-en="Result logging">結果寫入</span><span class="stage-val" id="v26">—</span><span class="stage-status s-auto" id="s26" style="display:none">AUTO</span></div>
+      </div>
+
+      <!-- Pose table (hidden until run) -->
+      <div class="pose-table-wrap" id="poseTableWrap" style="display:none">
+        <table class="pose-table">
+          <thead><tr>
+            <th data-zh="Mode" data-en="Mode">Mode</th>
+            <th data-zh="親和力 (kcal/mol)" data-en="Affinity (kcal/mol)">親和力 (kcal/mol)</th>
+            <th data-zh="RMSD lb" data-en="RMSD lb">RMSD lb</th>
+            <th data-zh="RMSD ub" data-en="RMSD ub">RMSD ub</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="poseTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="log-box" id="logA" style="display:none"></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnA" onclick="runEngineA()">▶ <span data-zh="Run Engine A" data-en="Run Engine A">Run Engine A</span></button>
+        <span class="action-note" id="noteA" data-zh="全自動，無需介入" data-en="Fully automatic">全自動，無需介入</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><div class="connector-line"></div><div class="connector-label">docking_result.json</div><div class="connector-line"></div></div>
+
+  <!-- ENGINE B -->
+  <div class="engine" id="engB">
+    <div class="engine-header" onclick="toggle('engB')">
+      <div class="engine-badge" id="badgeB">ENGINE B</div>
+      <div>
+        <div class="engine-title" data-zh="最終人工審核" data-en="Final human review">最終人工審核</div>
+        <div class="engine-subtitle" data-zh="Stage 27 → final_report.json" data-en="Stage 27 → final_report.json">Stage 27 → final_report.json</div>
+      </div>
+      <div class="engine-chevron">▼</div>
+    </div>
+    <div class="engine-body">
+      <div class="stage-list">
+        <div class="stage-row"><span class="stage-num">27</span><span class="stage-name" data-zh="最終審核" data-en="Final review">最終審核</span><span class="stage-val" id="v27">—</span><span class="stage-status" id="s27" style="display:none"></span></div>
+      </div>
+
+      <!-- Review panel -->
+      <div class="review-panel" id="reviewPanel" style="display:none">
+        <div class="review-title" data-zh="STAGE 27 — 審核 DOCKING 結果" data-en="STAGE 27 — REVIEW DOCKING RESULT">STAGE 27 — 審核 DOCKING 結果</div>
+        <div class="result-grid">
+          <div class="result-item"><div class="result-lbl" data-zh="Best pose" data-en="Best pose">Best pose</div><div class="result-val green" id="rBest">—</div></div>
+          <div class="result-item"><div class="result-lbl" data-zh="Confidence tier" data-en="Confidence tier">Confidence tier</div><div class="result-val" id="rTier">—</div></div>
+          <div class="result-item"><div class="result-lbl" data-zh="QC 結果" data-en="QC result">QC 結果</div><div class="result-val" id="rQC">—</div></div>
+          <div class="result-item"><div class="result-lbl" data-zh="Flags" data-en="Flags">Flags</div><div class="result-val" id="rFlags">—</div></div>
+        </div>
+        <div class="decision-btns">
+          <button class="btn btn-success" onclick="decide('ACCEPT')" data-zh="✓ 接受結果" data-en="✓ Accept">✓ 接受結果</button>
+          <button class="btn btn-amber" onclick="decide('RETRY')" data-zh="↩ 重跑" data-en="↩ Retry">↩ 重跑</button>
+          <button class="btn btn-danger" onclick="decide('FLAG')" data-zh="⚑ 標記問題" data-en="⚑ Flag">⚑ 標記問題</button>
+        </div>
+
+        <!-- Retry 選擇 -->
+        <div class="retry-panel" id="retryPanel">
+          <div class="retry-label" data-zh="選擇需重跑的 Module：" data-en="Select module to retry:">選擇需重跑的 Module：</div>
+          <div class="retry-options">
+            <div class="retry-opt" onclick="selectRetry(this,'M2')" data-zh-label="Module 2" data-en-label="Module 2" data-zh-sub="配體準備（質子化、手性）" data-en-sub="Ligand prep (protonation, chirality)"><div><div class="retry-opt-label">Module 2</div><div class="retry-opt-sub">配體準備（質子化、手性）</div></div></div>
+            <div class="retry-opt" onclick="selectRetry(this,'M3')" data-zh-label="Module 3" data-en-label="Module 3" data-zh-sub="蛋白準備（去水、殘基 override）" data-en-sub="Protein prep (water, residue override)"><div><div class="retry-opt-label">Module 3</div><div class="retry-opt-sub">蛋白準備（去水、殘基 override）</div></div></div>
+            <div class="retry-opt" onclick="selectRetry(this,'M4')" data-zh-label="Module 4" data-en-label="Module 4" data-zh-sub="口袋定義（配體選擇、座標）" data-en-sub="Pocket definition (ligand, coordinates)"><div><div class="retry-opt-label">Module 4</div><div class="retry-opt-sub">口袋定義（配體選擇、座標）</div></div></div>
+            <div class="retry-opt" onclick="selectRetry(this,'M5')" data-zh-label="Module 5" data-en-label="Module 5" data-zh-sub="Docking 參數（exhaustiveness、box）" data-en-sub="Docking params (exhaustiveness, box)"><div><div class="retry-opt-label">Module 5</div><div class="retry-opt-sub">Docking 參數（exhaustiveness、box）</div></div></div>
+          </div>
+          <div style="margin-top:.75rem;display:flex;gap:.5rem;">
+            <button class="btn btn-amber" id="btnConfirmRetry" onclick="confirmRetry()" disabled data-zh="確認重跑" data-en="Confirm retry">確認重跑</button>
+            <button class="btn btn-ghost" onclick="cancelRetry()" data-zh="取消" data-en="Cancel">取消</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="log-box" id="logB" style="display:none"></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnB" onclick="runEngineB()" disabled>▶ <span data-zh="Run Engine B" data-en="Run Engine B">Run Engine B</span></button>
+        <span class="action-note" id="noteB" data-zh="等待 Engine A 完成" data-en="Waiting for Engine A">等待 Engine A 完成</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-bar" id="summary">
+    <div class="summary-title" data-zh="MODULE 5 完成 ✓ — PIPELINE 結束" data-en="MODULE 5 COMPLETE ✓ — PIPELINE DONE">MODULE 5 完成 ✓ — PIPELINE 結束</div>
+    <div class="summary-grid">
+      <div class="summary-item"><div class="lbl" data-zh="藥物" data-en="Drug">藥物</div><div class="val" id="sumDrug">—</div></div>
+      <div class="summary-item"><div class="lbl" data-zh="Best affinity" data-en="Best affinity">Best affinity</div><div class="val" id="sumAff" style="color:var(--green)">—</div></div>
+      <div class="summary-item"><div class="lbl" data-zh="Confidence" data-en="Confidence">Confidence</div><div class="val" id="sumTier">—</div></div>
+      <div class="summary-item"><div class="lbl" data-zh="決策" data-en="Decision">決策</div><div class="val" id="sumDecision" style="color:var(--green)">—</div></div>
+      <div class="summary-item"><div class="lbl">final_report.json</div><div class="val" style="color:var(--green)" data-zh="已寫入" data-en="Written">已寫入</div></div>
+    </div>
+  </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT：LLM ══ -->
+<div class="right">
+  <div class="right-header">
+    <div class="right-title">
+      LOCAL LLM
+      <span class="right-badge">Gemma 4 2B</span>
+    </div>
+  </div>
+
+  <div class="llm-area" id="llmArea">
+    <div class="llm-hint">
+      <b data-zh="使用說明" data-en="How to use">使用說明</b><br>
+      <span data-zh="在此詢問任何關於 docking 的問題。Gemma 4 會結合當前結果給出解釋。" data-en="Ask anything about docking. Gemma 4 provides context-aware explanations.">在此詢問任何關於 docking 的問題。Gemma 4 會結合當前結果給出解釋。</span>
+    </div>
+    <div class="llm-msg system" id="llmWelcome" data-zh="Pipeline 尚未啟動。執行 Engine A 後，我可以幫你解讀 pose 分數和 QC 結果。" data-en="Pipeline not started yet. Run Engine A and I can help interpret pose scores and QC results.">Pipeline 尚未啟動。執行 Engine A 後，我可以幫你解讀 pose 分數和 QC 結果。</div>
+  </div>
+
+  <div class="llm-input-bar">
+    <div class="llm-input-row">
+      <input class="llm-input" id="llmInput" placeholder="問 Gemma 4..." onkeydown="if(event.key==='Enter')sendLLM()">
+      <button class="llm-send" onclick="sendLLM()">送出</button>
+    </div>
+    <div class="llm-context" id="llmCtx">context：尚無 docking 結果</div>
+  </div>
+</div>
+</div>
+
+<script>
+const LANG = {cur:'zh'};
+const MOCK_POSES = [
+  {mode:1,affinity:-7.561,rmsd_lb:0.00,rmsd_ub:0.00},
+  {mode:2,affinity:-7.475,rmsd_lb:1.45,rmsd_ub:2.26},
+  {mode:3,affinity:-7.135,rmsd_lb:3.65,rmsd_ub:6.61},
+  {mode:4,affinity:-6.703,rmsd_lb:1.19,rmsd_ub:2.11},
+  {mode:5,affinity:-6.426,rmsd_lb:10.72,rmsd_ub:12.29},
+  {mode:6,affinity:-6.390,rmsd_lb:2.96,rmsd_ub:6.15},
+  {mode:7,affinity:-6.220,rmsd_lb:10.52,rmsd_ub:11.97},
+  {mode:8,affinity:-5.582,rmsd_lb:11.15,rmsd_ub:12.71},
+  {mode:9,affinity:-5.577,rmsd_lb:10.26,rmsd_ub:12.10},
+];
+const STATE = {poses:[], decision:null, retryMod:null};
+
+// ── Lang ──────────────────────────────────────────────
+function setLang(l) {
+  LANG.cur = l;
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', (l==='zh'&&b.textContent==='中文')||(l==='en'&&b.textContent==='EN'));
+  });
+  document.querySelectorAll('[data-zh]').forEach(el => {
+    const t = el.getAttribute('data-'+l);
+    if (!t) return;
+    if (el.tagName==='INPUT') el.placeholder = t;
+    else el.textContent = t;
+  });
+  document.querySelectorAll('.retry-opt').forEach(el => {
+    el.querySelector('.retry-opt-label').textContent = el.getAttribute('data-'+l+'-label')||'';
+    el.querySelector('.retry-opt-sub').textContent = el.getAttribute('data-'+l+'-sub')||'';
+  });
+  document.getElementById('llmInput').placeholder = l==='zh' ? '問 Gemma 4...' : 'Ask Gemma 4...';
+}
+
+function toggle(id) { document.getElementById(id).classList.toggle('open'); }
+
+function setEngineState(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('active','running','needs-input','done','error');
+  if (state) el.classList.add(state);
+  const badge = document.getElementById(id==='engA'?'badgeA':'badgeB');
+  const prefix = id==='engA' ? 'ENGINE A' : 'ENGINE B';
+  const labels = {active:'READY',running:'RUNNING...',
+    'needs-input':'ACTION NEEDED',done:'DONE ✓',error:'ERROR'};
+  badge.textContent = state ? `${prefix} · ${labels[state]||state}` : prefix;
+}
+
+function setStage(id_v, id_s, val, cls, txt) {
+  document.getElementById(id_v).textContent = val;
+  const s = document.getElementById(id_s);
+  s.className = 'stage-status ' + cls;
+  s.textContent = txt;
+  s.style.display = '';
+}
+
+function appendLog(id, msg, cls='') {
+  const b = document.getElementById(id);
+  b.style.display = '';
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  b.appendChild(d);
+  b.scrollTop = b.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ── Engine A ──────────────────────────────────────────
+async function runEngineA() {
+  document.getElementById('btnA').disabled = true;
+  setEngineState('engA','running');
+  const log = (m,c='') => appendLog('logA',m,c);
+
+  log('[Stage 24] AutoDock Vina 執行...');
+  log('  → Receptor: protein/receptor.pdbqt');
+  log('  → Ligand: ligand/ligand.pdbqt');
+  log('  → Center: (165.423, 185.645, 192.592)');
+  log('  → Box: 28.5 × 23.8 × 25.8 Å | Exhaustiveness: 8');
+  log('  → 執行中（請稍候）...');
+  await sleep(1800);
+
+  STATE.poses = MOCK_POSES;
+  log(`  ✓ Vina 完成，找到 ${MOCK_POSES.length} 個 pose`,'ok');
+  setStage('v24','s24',`${MOCK_POSES.length} poses`,'s-auto','AUTO');
+
+  // Pose table
+  const tbody = document.getElementById('poseTbody');
+  tbody.innerHTML = '';
+  MOCK_POSES.forEach(p => {
+    const outside = p.rmsd_lb > 8;
+    const isBest = p.mode === 1;
+    const tr = document.createElement('tr');
+    tr.className = isBest ? 'best' : outside ? 'outside' : '';
+    tr.innerHTML = `
+      <td>${p.mode}
+        ${isBest ? '<span class="pose-badge pb-best">best</span>' : ''}
+        ${outside ? '<span class="pose-badge pb-out">口袋外</span>' : ''}
+      </td>
+      <td>${p.affinity.toFixed(3)}</td>
+      <td>${p.rmsd_lb.toFixed(2)}</td>
+      <td>${p.rmsd_ub.toFixed(2)}</td>
+      <td></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('poseTableWrap').style.display = '';
+  await sleep(400);
+
+  log('[Stage 25] Pose QC...');
+  await sleep(500);
+  log('  ✓ 分數合理：-7.561 kcal/mol（閾值 -6.0）','ok');
+  log('  ⚠ Mode 5/7/8/9：RMSD lb > 8 Å（口袋外）','warn');
+  log('  ✓ QC 通過','ok');
+  setStage('v25','s25','PASS','s-pass','PASS');
+
+  await sleep(300);
+  log('[Stage 26] 結果寫入...');
+  await sleep(300);
+  log('  ✓ Confidence tier：A','ok');
+  log('  ✓ docking_result.json 寫入完成','ok');
+  setStage('v26','s26','tier A','s-auto','AUTO');
+
+  setEngineState('engA','done');
+  document.getElementById('btnB').disabled = false;
+  document.getElementById('noteB').textContent = LANG.cur==='zh' ? '就緒，審核結果' : 'Ready for review';
+  setEngineState('engB','active');
+  document.getElementById('engB').classList.add('open');
+
+  // Update LLM context
+  document.getElementById('llmCtx').textContent =
+    'context：COX2 · -7.561 kcal/mol · tier A · 4/9 poses in pocket';
+  addLLMMsg('system', LANG.cur==='zh'
+    ? 'Engine A 完成。Best pose -7.561 kcal/mol（Tier A）。Mode 5/7/8/9 超出口袋範圍，但 Mode 1-4 集中在口袋內，結果可信。有問題可以問我。'
+    : 'Engine A done. Best pose -7.561 kcal/mol (Tier A). Modes 5/7/8/9 outside pocket, but modes 1-4 cluster well inside. Results look reliable.');
+}
+
+// ── Engine B ──────────────────────────────────────────
+async function runEngineB() {
+  document.getElementById('btnB').disabled = true;
+  setEngineState('engB','running');
+  appendLog('logB','[Stage 27] 載入 docking 結果...');
+  await sleep(400);
+
+  // Show review panel
+  document.getElementById('rBest').textContent = 'Mode 1 | -7.561 kcal/mol';
+  document.getElementById('rTier').textContent = 'A';
+  document.getElementById('rTier').style.color = 'var(--green)';
+  document.getElementById('rQC').textContent = 'PASS';
+  document.getElementById('rQC').style.color = 'var(--green)';
+  document.getElementById('rFlags').textContent = LANG.cur==='zh' ? '無' : 'None';
+
+  document.getElementById('reviewPanel').style.display = '';
+  setEngineState('engB','needs-input');
+  appendLog('logB', LANG.cur==='zh' ? '  → 等待人工審核...' : '  → Awaiting human review...','info');
+}
+
+function decide(d) {
+  STATE.decision = d;
+  if (d === 'RETRY') {
+    document.getElementById('retryPanel').style.display = '';
+    return;
+  }
+  finishReview(d, '');
+}
+
+function selectRetry(el, mod) {
+  document.querySelectorAll('.retry-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  STATE.retryMod = mod;
+  document.getElementById('btnConfirmRetry').disabled = false;
+}
+
+function confirmRetry() {
+  const mod = STATE.retryMod || 'M5';
+  finishReview('RETRY', `重跑 ${mod}`);
+}
+
+function cancelRetry() {
+  document.getElementById('retryPanel').style.display = 'none';
+  STATE.decision = null;
+}
+
+async function finishReview(decision, note) {
+  document.getElementById('reviewPanel').style.display = 'none';
+  appendLog('logB', `  ✓ 決策：${decision}${note?' — '+note:''}`, 'ok');
+  await sleep(300);
+
+  setStage('v27','s27', decision, decision==='ACCEPT'?'s-pass':decision==='FLAG'?'s-warn':'s-manual', decision);
+  setEngineState('engB','done');
+
+  if (decision === 'ACCEPT') {
+    appendLog('logB','  ✓ final_report.json 寫入完成','ok');
+    document.getElementById('sumDrug').textContent = 'Ibuprofen';
+    document.getElementById('sumAff').textContent = '-7.561 kcal/mol';
+    document.getElementById('sumTier').textContent = 'A';
+    document.getElementById('sumDecision').textContent = LANG.cur==='zh' ? 'ACCEPT ✓' : 'ACCEPT ✓';
+    document.getElementById('summary').classList.add('visible');
+
+    addLLMMsg('system', LANG.cur==='zh'
+      ? 'Pipeline 完成！Ibuprofen 對 COX-2 的 docking 結果已接受。-7.561 kcal/mol 在文獻範圍內（-7 ~ -9 kcal/mol）。final_report.json 已寫入。'
+      : 'Pipeline complete! Ibuprofen vs COX-2 docking accepted. -7.561 kcal/mol is within expected literature range (-7 to -9 kcal/mol).');
+  } else {
+    addLLMMsg('system', LANG.cur==='zh'
+      ? `決策：${decision}。${note} 請按照建議重跑對應 Module。`
+      : `Decision: ${decision}. ${note} Please rerun the indicated module.`);
+  }
+}
+
+// ── LLM ──────────────────────────────────────────────
+function addLLMMsg(role, text) {
+  const area = document.getElementById('llmArea');
+  const div = document.createElement('div');
+  div.className = `llm-msg ${role}`;
+  div.textContent = text;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+const LLM_RESPONSES = {
+  zh: {
+    'rmsd': 'RMSD（均方根偏差）衡量 pose 與 best pose 的空間差異。RMSD lb > 8 Å 代表這個 pose 跑到了口袋外，通常不可信。Mode 1-4 的 RMSD 小，代表它們在口袋同一區域，結合模式一致。',
+    'kcal': '-7.561 kcal/mol 是親和力（affinity），越負越強。Ibuprofen 對 COX-2 的文獻值約 -7 ~ -9 kcal/mol，你的結果在合理範圍內。',
+    'tier': 'Confidence tier A 代表：QC 全過、分數合理、無 flag。這是最高可信度的結果，可以直接引用。',
+    'default': '這個問題很好。目前 Pipeline 跑完的結果是 COX2/Ibuprofen，Best pose -7.561 kcal/mol，Tier A。有具體問題可以問我。',
+  },
+  en: {
+    'rmsd': 'RMSD measures spatial deviation from the best pose. RMSD lb > 8 Å means the pose landed outside the pocket and is unreliable. Modes 1-4 have low RMSD, indicating consistent binding in the same pocket region.',
+    'kcal': '-7.561 kcal/mol is the binding affinity. More negative = stronger binding. Literature values for Ibuprofen vs COX-2 are around -7 to -9 kcal/mol, so your result is in the expected range.',
+    'tier': 'Confidence tier A means: all QC checks passed, score is reasonable, no flags. This is the highest confidence level — results are citable.',
+    'default': 'Current pipeline result: COX2/Ibuprofen, best pose -7.561 kcal/mol, Tier A. Ask me anything specific.',
+  },
+};
+
+function sendLLM() {
+  const inp = document.getElementById('llmInput');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  addLLMMsg('user', q);
+
+  const r = LLM_RESPONSES[LANG.cur];
+  const ql = q.toLowerCase();
+  let ans = r.default;
+  if (ql.includes('rmsd')) ans = r.rmsd;
+  else if (ql.includes('kcal') || ql.includes('分數') || ql.includes('score') || ql.includes('affinity')) ans = r.kcal;
+  else if (ql.includes('tier') || ql.includes('confidence') || ql.includes('可信')) ans = r.tier;
+
+  setTimeout(() => addLLMMsg('assistant', ans), 600);
+}
+
+// ── API mode（真實後台）──────────────────────────────
+const M5API = {
+  enabled: false,
+  session: '',
+  pollTimer: null,
+};
+
+function ensureApiBanner() {
+  let el = document.getElementById('apiBanner');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'apiBanner';
+  el.style.cssText = 'display:none;margin:10px 2rem 0;padding:8px 12px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);border-radius:8px;font-family:var(--mono);font-size:11px;';
+  document.querySelector('.left').prepend(el);
+  return el;
+}
+
+function showApiBanner(msg) {
+  const el = ensureApiBanner();
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideApiBanner() {
+  const el = ensureApiBanner();
+  el.style.display = 'none';
+}
+
+function getQueryParam(key) {
+  return new URLSearchParams(location.search).get(key) || '';
+}
+
+function parseSessionFromUrl() {
+  const sid = getQueryParam('session').trim();
+  if (/^[a-fA-F0-9]{16}$/.test(sid)) {
+    M5API.session = sid;
+    return;
+  }
+  M5API.session = '';
+}
+
+function renderPoseTable(poses, cutoff) {
+  const tbody = document.getElementById('poseTbody');
+  tbody.innerHTML = '';
+  const list = Array.isArray(poses) ? poses : [];
+  if (!list.length) {
+    document.getElementById('poseTableWrap').style.display = 'none';
+    return;
+  }
+  list.forEach(p => {
+    const outside = Number(p.rmsd_lb) > Number(cutoff || 8.0);
+    const isBest = Number(p.mode) === 1;
+    const tr = document.createElement('tr');
+    tr.className = isBest ? 'best' : outside ? 'outside' : '';
+    const outTxt = LANG.cur === 'zh' ? '口袋外' : 'OUT';
+    tr.innerHTML = `
+      <td>${p.mode}
+        ${isBest ? '<span class="pose-badge pb-best">best</span>' : ''}
+        ${outside ? `<span class="pose-badge pb-out">${outTxt}</span>` : ''}
+      </td>
+      <td>${Number(p.affinity).toFixed(3)}</td>
+      <td>${Number(p.rmsd_lb).toFixed(2)}</td>
+      <td>${Number(p.rmsd_ub).toFixed(2)}</td>
+      <td></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('poseTableWrap').style.display = '';
+}
+
+function applyStatus(s) {
+  if (!s || !s.ok) {
+    showApiBanner((s && s.error) || '無法讀取 status');
+    return;
+  }
+  hideApiBanner();
+  if (s.target) document.getElementById('tgt').textContent = s.target;
+  if (s.pdb_id) document.getElementById('pdb').textContent = s.pdb_id;
+  if (s.drug) document.getElementById('drug').textContent = s.drug;
+
+  const dr = s.docking_result || null;
+  const fr = s.final_report || null;
+  const s27 = (s.engine_b || {}).raw27 || null;
+
+  if (dr && dr.ready_for_review) {
+    setEngineState('engA', 'done');
+    setStage('v24', 's24', `${(dr.all_poses || []).length} poses`, 's-auto', 'AUTO');
+    setStage('v25', 's25', dr.qc_pass ? 'PASS' : 'WARN', dr.qc_pass ? 's-pass' : 's-warn', dr.qc_pass ? 'PASS' : 'WARN');
+    setStage('v26', 's26', `tier ${dr.confidence_tier || '?'}`, 's-auto', 'AUTO');
+    renderPoseTable(dr.all_poses || [], dr.out_of_pocket_rmsd_lb_cutoff || 8.0);
+    document.getElementById('btnB').disabled = false;
+    document.getElementById('noteB').textContent = LANG.cur === 'zh' ? '就緒，審核結果' : 'Ready for review';
+    setEngineState('engB', s27 ? 'done' : 'active');
+  } else {
+    document.getElementById('btnA').disabled = false;
+    setEngineState('engA', 'active');
+    document.getElementById('btnB').disabled = true;
+    setEngineState('engB', '');
+    document.getElementById('poseTableWrap').style.display = 'none';
+  }
+
+  if (dr) {
+    document.getElementById('rBest').textContent = `Mode ${dr.best_pose_mode} | ${Number(dr.best_affinity).toFixed(3)} kcal/mol`;
+    document.getElementById('rTier').textContent = dr.confidence_tier || '—';
+    document.getElementById('rQC').textContent = dr.qc_pass ? 'PASS' : 'WARN';
+    document.getElementById('rFlags').textContent = (dr.flags && dr.flags.length) ? dr.flags.join(' | ') : (LANG.cur === 'zh' ? '無' : 'None');
+  }
+
+  if (s27) {
+    const dec = (s27.decision || s27.status || '').toUpperCase();
+    const cls = dec === 'ACCEPT' ? 's-pass' : dec === 'FLAG' ? 's-warn' : 's-manual';
+    setStage('v27', 's27', dec, cls, dec);
+  }
+
+  if (fr) {
+    document.getElementById('summary').classList.add('visible');
+    document.getElementById('sumDrug').textContent = fr.target_drug || s.drug || '—';
+    document.getElementById('sumAff').textContent = `${Number(fr.best_affinity).toFixed(3)} kcal/mol`;
+    document.getElementById('sumTier').textContent = fr.confidence_tier || '—';
+    document.getElementById('sumDecision').textContent = 'ACCEPT ✓';
+    setEngineState('engB', 'done');
+    document.getElementById('btnB').disabled = true;
+  }
+}
+
+async function fetchStatus() {
+  if (!M5API.enabled || !M5API.session) return;
+  const r = await fetch(`/api/module5/status?session=${encodeURIComponent(M5API.session)}`);
+  const j = await r.json();
+  applyStatus(j);
+}
+
+async function runEngineA() {
+  if (!M5API.enabled || !M5API.session) return;
+  document.getElementById('btnA').disabled = true;
+  setEngineState('engA', 'running');
+  const logA = document.getElementById('logA');
+  logA.style.display = '';
+  logA.innerHTML = '';
+  try {
+    const res = await fetch('/api/module5/run-engine-a', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session: M5API.session,
+        target: document.getElementById('tgt').textContent.trim() || undefined,
+      }),
+    });
+    const j = await res.json();
+    if (j.log) {
+      j.log.split('\n').forEach(line => appendLog('logA', line, j.ok ? '' : 'warn'));
+    }
+    if (j.status) applyStatus(j.status);
+  } catch (e) {
+    appendLog('logA', String(e), 'warn');
+  }
+}
+
+function runEngineB() {
+  if (!M5API.enabled) return;
+  document.getElementById('reviewPanel').style.display = '';
+  setEngineState('engB', 'needs-input');
+}
+
+function decide(d) {
+  STATE.decision = d;
+  if (d === 'RETRY') {
+    document.getElementById('retryPanel').style.display = '';
+    return;
+  }
+  finishReview(d, '');
+}
+
+function confirmRetry() {
+  const mod = STATE.retryMod ? String(STATE.retryMod).replace('M', '') : '5';
+  finishReview('RETRY', '', mod);
+}
+
+async function finishReview(decision, note, retryModule='') {
+  if (!M5API.enabled || !M5API.session) return;
+  document.getElementById('reviewPanel').style.display = 'none';
+  const logB = document.getElementById('logB');
+  logB.style.display = '';
+  appendLog('logB', `提交決策：${decision}${retryModule ? ` (module ${retryModule})` : ''}`, 'info');
+  try {
+    const res = await fetch('/api/module5/run-engine-b', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session: M5API.session,
+        decision,
+        note: note || undefined,
+        retry_module: decision === 'RETRY' ? retryModule : undefined,
+      }),
+    });
+    const j = await res.json();
+    if (j.log) {
+      j.log.split('\n').forEach(line => appendLog('logB', line, j.ok ? '' : 'warn'));
+    }
+    if (j.status) applyStatus(j.status);
+  } catch (e) {
+    appendLog('logB', String(e), 'warn');
+  }
+}
+
+async function startApiMode() {
+  parseSessionFromUrl();
+  const qTarget = getQueryParam('target').trim();
+  if (qTarget) document.getElementById('tgt').textContent = qTarget;
+  if (!M5API.session) {
+    showApiBanner('URL 缺少 session 參數，例如 ?session=93e44ebf6158878c&target=COX2');
+    return;
+  }
+  try {
+    const r = await fetch('/api/module5/status?session=' + encodeURIComponent(M5API.session));
+    if (!r.ok) throw new Error('status http ' + r.status);
+    M5API.enabled = true;
+    const j = await r.json();
+    applyStatus(j);
+    if (M5API.pollTimer) clearInterval(M5API.pollTimer);
+    M5API.pollTimer = setInterval(fetchStatus, 4000);
+  } catch (e) {
+    showApiBanner('無法連線後端：請先在 MolGate 目錄執行 py molgate_module5_server.py');
+  }
+}
+
+startApiMode();
+</script>
+</body>
+</html>
