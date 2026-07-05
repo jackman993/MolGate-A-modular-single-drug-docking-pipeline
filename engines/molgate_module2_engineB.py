@@ -27,6 +27,15 @@ from molgate_manifest import (
 from rdkit import Chem
 from rdkit.Chem.MolStandardize import rdMolStandardize
 
+# Windows cp950 下避免 Unicode 輸出炸掉（如 ❌、⚠、✓）
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # ── 嘗試載入 Dimorphite-DL ───────────────────────────
 try:
     from dimorphite_dl import protonate_smiles
@@ -241,17 +250,17 @@ def run_engine_b(session_dir: Path, target: str):
         try_load_manifest_or_rebuild(session_dir)
         validate_target_matches_manifest(session_dir, target)
     except ValueError as e:
-        print(f"❌ {e}")
+        print(f"[ERROR] {e}")
         sys.exit(1)
     except FileNotFoundError as e:
-        print(f"❌ {e}")
+        print(f"[ERROR] {e}")
         sys.exit(1)
 
     # 讀取 Stage 01 輸出（Module 1，schema 與本引擎分離）
     try:
         s1 = load_stage01_from_module1(session_dir)
     except FileNotFoundError:
-        print("❌ 找不到 Module 1 輸出，請先跑 molgate_module1.py")
+        print("[ERROR] 找不到 Module 1 輸出，請先跑 molgate_module1.py")
         sys.exit(1)
 
     smiles = s1["canonical_smiles"]
@@ -270,7 +279,7 @@ def run_engine_b(session_dir: Path, target: str):
         r4 = stage04_protonation(smiles, target, session_dir)
         r5 = stage05_tautomer(r4["selected_smiles"], target, session_dir)
     except ValueError as e:
-        print(f"\n❌ Pipeline stopped: {e}")
+        print(f"\n[ERROR] Pipeline stopped: {e}")
         sys.exit(1)
 
     finalize_module2_engine_b_manifest(session_dir, r4, r5)
@@ -287,7 +296,7 @@ def run_engine_b(session_dir: Path, target: str):
     )
 
     print("\n" + "=" * 55)
-    print("  Engine B 完成 ✓")
+    print("  Engine B 完成 [OK]")
     print(f"  最終 SMILES → Stage 09 使用：{r5['selected_smiles']}")
     print(f"  Session log：{session_dir}")
     print(f"  Manifest：{session_dir / 'molgate_run_manifest.json'}")
@@ -308,7 +317,7 @@ if __name__ == "__main__":
 
     session_dir = Path(args.session_dir)
     if not session_dir.exists():
-        print(f"❌ Session 目錄不存在：{session_dir}")
+        print(f"[ERROR] Session 目錄不存在：{session_dir}")
         sys.exit(1)
 
     run_engine_b(session_dir, args.target)

@@ -28,6 +28,25 @@ if str(_PKG_ROOT) not in sys.path:
 
 SCHEMA_VERSION = "0.2"
 
+
+def paper_outcome_class(dr: dict[str, Any]) -> str:
+    """DrugOps paper taxonomy (Table 4/5): automated QC only, not Stage-27 decision."""
+    if dr.get("qc_pass") is True:
+        return "Pass"
+    return "QC-flagged"
+
+
+def print_paper_outcome_line(dr: dict[str, Any], *, decision: str) -> None:
+    """Clarify batch ACCEPT vs qc_pass (common CMD confusion)."""
+    outcome = paper_outcome_class(dr)
+    print(f"  Paper outcome (auto QC): {outcome}")
+    if decision == "ACCEPT" and not dr.get("qc_pass"):
+        print(
+            "  Note: Stage-27 ACCEPT only archives artifacts in batch mode; "
+            "qc_pass=false means QC-flagged, not Pass."
+        )
+
+
 RETRY_TARGETS = {
     "1": ("Module 1", "SMILES / PDB 輸入問題"),
     "2": ("Module 2", "配體準備問題（質子化、手性）"),
@@ -271,8 +290,9 @@ def stage27_review(
 
     if decision == "ACCEPT":
         report_path = write_final_report(session_dir, dr, note)
-        print(f"\n  ✓ 結果接受")
-        print(f"  ✓ 最終報告：{report_path}")
+        print(f"\n  ✓ Artifacts archived (Stage-27 decision: ACCEPT)")
+        print(f"  ✓ Final report: {report_path}")
+        print_paper_outcome_line(dr, decision=decision)
     elif decision == "RETRY":
         print(f"\n  ↩ 標記重跑：{note}")
     elif decision == "FLAG":
@@ -325,8 +345,9 @@ def run_engine_b(
     print("\n" + "=" * 55)
     decision = result["decision"]
     if decision == "ACCEPT":
-        print("  Pipeline 完成 ✓")
-        print(f"  最終報告：{session_dir / 'final_report.json'}")
+        print("  Pipeline complete ✓")
+        print(f"  Final report: {session_dir / 'final_report.json'}")
+        print_paper_outcome_line(dr, decision=decision)
     elif decision == "RETRY":
         print(f"  ↩ 需重跑：{result['note']}")
     else:

@@ -162,7 +162,12 @@ def _update_manifest_module4_engine_c(session_dir: Path, pocket_config_path: Pat
 
 
 # ── Stage 23：口袋中心計算 ────────────────────────────
-def stage23_pocket_center(session_dir: Path, entry: dict[str, Any]) -> dict[str, Any]:
+def stage23_pocket_center(
+    session_dir: Path,
+    entry: dict[str, Any],
+    *,
+    non_interactive: bool = False,
+) -> dict[str, Any]:
     print("\n[Stage 23] 口袋中心計算...")
 
     s22 = load_stage22(session_dir)
@@ -222,7 +227,11 @@ def stage23_pocket_center(session_dir: Path, entry: dict[str, Any]) -> dict[str,
         "padding": padding,
     }
 
-    accepted = prompt_confirm("口袋座標與 Box Size", confirm_data)
+    if non_interactive:
+        accepted = True
+        print("\n  ✓ --non-interactive：自動接受計算之口袋座標與 Box Size")
+    else:
+        accepted = prompt_confirm("口袋座標與 Box Size", confirm_data)
 
     if not accepted:
         print("\n  手動輸入座標（直接 Enter 保留計算值）：")
@@ -319,6 +328,7 @@ def run_engine_c(
     index_path: Path | None = None,
     skip_manifest_target_check: bool = False,
     skip_prep_target_check: bool = False,
+    non_interactive: bool = False,
 ):
     print("=" * 55)
     print("  MolGate — Module 4 Engine C")
@@ -353,7 +363,7 @@ def run_engine_c(
     print(f"\n  Target：{target.upper()}")
 
     try:
-        r23 = stage23_pocket_center(session_dir, entry)
+        r23 = stage23_pocket_center(session_dir, entry, non_interactive=non_interactive)
     except FileNotFoundError as e:
         print(f"❌ {e}")
         sys.exit(1)
@@ -401,6 +411,11 @@ if __name__ == "__main__":
         action="store_true",
         help="不檢查 prep_decisions.target 與 --target 一致",
     )
+    ap.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Stage 23 自動接受計算之口袋與 box（不詢問 Y/n）",
+    )
     args = ap.parse_args()
 
     sd = Path(args.session_dir)
@@ -415,4 +430,5 @@ if __name__ == "__main__":
         index_path=idx,
         skip_manifest_target_check=args.skip_manifest_target_check,
         skip_prep_target_check=args.skip_prep_target_check,
+        non_interactive=args.non_interactive,
     )

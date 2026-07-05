@@ -99,6 +99,8 @@ def stage22_ligand(
     session_dir: Path,
     target: str,
     index_path: Path | None,
+    *,
+    non_interactive: bool = False,
 ) -> dict[str, Any]:
     print("\n[Stage 22] 配體身份確認...")
 
@@ -139,9 +141,14 @@ def stage22_ligand(
 
     if not het_id:
         print(f"  ⚠ 無法自動比對（Index 缺 het_id / cocrystal_het），請手動選擇")
-        selected = prompt_select(candidates, "請選擇用於口袋定義的配體")
-        status = "MANUAL"
-        print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
+        if non_interactive:
+            selected = candidates[0]
+            status = "AUTO_FORCED"
+            print(f"  ✓ --non-interactive：採用候選 [0] {selected['resname']} chain {selected['chain']}")
+        else:
+            selected = prompt_select(candidates, "請選擇用於口袋定義的配體")
+            status = "MANUAL"
+            print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
     else:
         matched = [c for c in candidates if c["resname"].upper() == het_id]
 
@@ -152,9 +159,17 @@ def stage22_ligand(
 
         elif len(matched) > 1:
             print(f"  ⚠ 多個 {het_id} 存在於不同 chain，需要確認")
-            selected = prompt_select(matched, f"選擇 {het_id} 所在 chain")
-            status = "MANUAL"
-            print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
+            if non_interactive:
+                selected = matched[0]
+                status = "AUTO_FORCED"
+                print(
+                    f"  ✓ --non-interactive：採用排序後第一個 {selected['resname']} "
+                    f"chain {selected['chain']} res {selected['resseq']}"
+                )
+            else:
+                selected = prompt_select(matched, f"選擇 {het_id} 所在 chain")
+                status = "MANUAL"
+                print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
 
         elif len(candidates) == 1:
             print(
@@ -162,26 +177,41 @@ def stage22_ligand(
                 f"與 Index 期望 {het_id} 不符"
             )
             print(f"  → 可能是 PDB／CCD 代碼與 Index 不一致")
-            confirm = input(
-                f"  是否使用 {candidates[0]['resname']} 作為口袋定義配體？[y/N]："
-            ).strip().lower()
-            if confirm == "y":
+            if non_interactive:
                 selected = candidates[0]
-                status = "MANUAL"
-                print(f"  ✓ 手動確認：{selected['resname']}")
+                status = "AUTO_FORCED"
+                print(f"  ✓ --non-interactive：採用唯一候選 {selected['resname']}")
             else:
-                result = {
-                    "status": "FAIL",
-                    "reason": f"用戶拒絕使用 {candidates[0]['resname']}，無法繼續",
-                }
-                save_stage(session_dir, 22, "ligand", result)
-                raise ValueError(f"Stage 22 FAIL: {result['reason']}")
+                confirm = input(
+                    f"  是否使用 {candidates[0]['resname']} 作為口袋定義配體？[y/N]："
+                ).strip().lower()
+                if confirm == "y":
+                    selected = candidates[0]
+                    status = "MANUAL"
+                    print(f"  ✓ 手動確認：{selected['resname']}")
+                else:
+                    result = {
+                        "status": "FAIL",
+                        "reason": f"用戶拒絕使用 {candidates[0]['resname']}，無法繼續",
+                    }
+                    save_stage(session_dir, 22, "ligand", result)
+                    raise ValueError(f"Stage 22 FAIL: {result['reason']}")
 
         else:
             print(f"  ⚠ 無法自動比對，候選列表如下：")
-            selected = prompt_select(candidates, "請選擇用於口袋定義的配體")
-            status = "MANUAL"
-            print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
+            if non_interactive:
+                preferred = [c for c in candidates if c.get("ligand_role") == "target"]
+                selected = (preferred[0] if preferred else candidates[0])
+                status = "AUTO_FORCED"
+                print(
+                    f"  ✓ --non-interactive：採用"
+                    f"{'【目標】' if selected.get('ligand_role') == 'target' else ''}"
+                    f"{selected['resname']} chain {selected['chain']}"
+                )
+            else:
+                selected = prompt_select(candidates, "請選擇用於口袋定義的配體")
+                status = "MANUAL"
+                print(f"  ✓ 選定：{selected['resname']} chain {selected['chain']}")
 
     print(f"  → Status: {status}")
 
@@ -208,7 +238,13 @@ def stage22_ligand(
 
 
 # ── 主流程 ────────────────────────────────────────────
-def run_engine_b(session_dir: Path, target: str, index_path: Path | None = None):
+def run_engine_b(
+    session_dir: Path,
+    target: str,
+    index_path: Path | None = None,
+    *,
+    non_interactive: bool = False,
+):
     print("=" * 55)
     print("  MolGate — Module 4 Engine B")
     print("  Stage 22: 配體身份確認（人機）")
@@ -226,7 +262,9 @@ def run_engine_b(session_dir: Path, target: str, index_path: Path | None = None)
     print(f"  Index 期望共晶代碼：{het_hint}")
 
     try:
-        result = stage22_ligand(session_dir, target, index_path)
+        result = stage22_ligand(
+            session_dir, target, index_path, non_interactive=non_interactive
+        )
     except FileNotFoundError as e:
         print(f"❌ {e}")
         sys.exit(1)
@@ -260,6 +298,11 @@ if __name__ == "__main__":
         default=None,
         help="master_index.json 路徑（預設：session_meta / manifest 或 MolGate 目錄下）",
     )
+    ap.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Stage 22 無法唯一自動比對時，採用規則化預設（多命中取第一個／無命中取候選[0]或【目標】）",
+    )
     args = ap.parse_args()
 
     sd = Path(args.session_dir)
@@ -268,4 +311,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     idx = Path(args.index) if args.index else None
-    run_engine_b(sd, args.target, index_path=idx)
+    run_engine_b(sd, args.target, index_path=idx, non_interactive=args.non_interactive)

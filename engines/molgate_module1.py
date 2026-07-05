@@ -251,18 +251,18 @@ def stage01_smiles(smiles: str, session_dir: Path) -> dict:
         result["warnings"] = warn_msgs
 
     save_stage(session_dir, 1, "smiles", result)
-    print(f"  ✓ Canonical SMILES: {canonical}")
-    print(f"  ✓ MW: {mw:.1f} Da | Atoms: {n_atoms}")
-    print(f"  ✓ 立體掃描: 未定義手性 {stereo['n_undefined_chiral_centers']} | 未定義 E/Z {stereo['n_undefined_ez_bonds']}")
+    print(f"  [OK] Canonical SMILES: {canonical}")
+    print(f"  [OK] MW: {mw:.1f} Da | Atoms: {n_atoms}")
+    print(f"  [OK] 立體掃描: 未定義手性 {stereo['n_undefined_chiral_centers']} | 未定義 E/Z {stereo['n_undefined_ez_bonds']}")
     if stereo["n_undefined_chiral_centers"] > 0:
         print(
-            f"  ⚠ WARN: 有未定義手性中心（indices: {stereo['undefined_chiral_atom_indices']}）"
+            f"  [WARN] 有未定義手性中心（indices: {stereo['undefined_chiral_atom_indices']}）"
         )
     if stereo["n_undefined_ez_bonds"] > 0:
-        print(f"  ⚠ WARN: 有未定義 E/Z（pairs: {stereo['undefined_ez_bond_atom_pairs']}）")
+        print(f"  [WARN] 有未定義 E/Z（pairs: {stereo['undefined_ez_bond_atom_pairs']}）")
     if result.get("recommend_resolve_stereo_before_module2"):
-        print("  → 建議：先處理立體再進 Module 2（仍為 WARN，非強制中止）")
-    print(f"  → Status: {result['status']}")
+        print("  [NEXT] 建議：先處理立體再進 Module 2（仍為 WARN，非強制中止）")
+    print(f"  [STATUS] {result['status']}")
     return result
 
 
@@ -402,12 +402,12 @@ def stage02_pdb(pdb_id: str, session_dir: Path, *, allow_network: bool = False) 
             "has_cryst1": v["has_cryst1"],
         }
         save_stage(session_dir, 2, "pdb", result)
-        print(f"  ✓ 已由本地載入：{src}")
-        print(f"  ✓ 複製到 session：{out_path}")
+        print(f"  [OK] 已由本地載入：{src}")
+        print(f"  [OK] 複製到 session：{out_path}")
         print(
-            f"  ✓ ATOM: {v['atom_count']} | HETATM: {v['hetatm_count']} | Chains: {v['chains']}"
+            f"  [OK] ATOM: {v['atom_count']} | HETATM: {v['hetatm_count']} | Chains: {v['chains']}"
         )
-        print(f"  → Status: {result['status']}")
+        print(f"  [STATUS] {result['status']}")
         return result
 
     if not allow_network:
@@ -467,11 +467,11 @@ def stage02_pdb(pdb_id: str, session_dir: Path, *, allow_network: bool = False) 
         "has_cryst1": v["has_cryst1"],
     }
     save_stage(session_dir, 2, "pdb", result)
-    print(f"  ✓ 已寫入：{out_path}")
+    print(f"  [OK] 已寫入：{out_path}")
     print(
-        f"  ✓ ATOM: {v['atom_count']} | HETATM: {v['hetatm_count']} | Chains: {v['chains']}"
+        f"  [OK] ATOM: {v['atom_count']} | HETATM: {v['hetatm_count']} | Chains: {v['chains']}"
     )
-    print(f"  → Status: {result['status']}")
+    print(f"  [STATUS] {result['status']}")
     return result
 
 
@@ -481,18 +481,27 @@ def stage03_index(
     pdb_id: str,
     session_dir: Path,
     index_path: Path | None = None,
+    index_key: str | None = None,
+    manual_verified: bool = False,
 ) -> dict:
-    print(f"\n[Stage 03] Master Index 查詢：target={target}...")
+    lookup_key = (index_key or target).strip().upper()
+    print(f"\n[Stage 03] Master Index 查詢：target={target} | index_key={lookup_key}...")
 
     idx = get_master_index(index_path)
-    key = target.strip().upper()
-    entry = idx.get(key)
+    entry = idx.get(lookup_key)
 
     if entry is None:
         result = {
             "status": "FAIL",
-            "target": key,
-            "reason": f"Target '{key}' 不在 Master Index，請先於 master_index.json 策編",
+            "target": target,
+            "index_key": lookup_key,
+            "reason": f"Index key '{lookup_key}' 不在 Master Index，請先於 master_index.json 策編",
+            "schema_ok": False,
+            "missing_fields": ["index_entry"],
+            "index_validation_mode": "manual_required",
+            "manual_verification_required": True,
+            "manual_verified": bool(manual_verified),
+            "rcsb_verified": False,
         }
         save_stage(session_dir, 3, "index", result)
         raise ValueError(f"Stage 03 FAIL: {result['reason']}")
@@ -500,11 +509,46 @@ def stage03_index(
     if not entry.get("allowed", True):
         result = {
             "status": "BLOCKED",
-            "target": key,
+            "target": target,
+            "index_key": lookup_key,
             "reason": f"此 Target 已禁用：{entry.get('notes', '')}",
+            "schema_ok": True,
+            "missing_fields": [],
+            "index_validation_mode": "manual_required",
+            "manual_verification_required": True,
+            "manual_verified": bool(manual_verified),
+            "rcsb_verified": False,
         }
         save_stage(session_dir, 3, "index", result)
         raise ValueError(f"Stage 03 BLOCKED: {result['reason']}")
+
+    required_fields = ("pdb_id", "pocket_rule", "target_drug")
+    missing_fields: list[str] = []
+    for f in required_fields:
+        v = entry.get(f)
+        if v is None or str(v).strip() == "":
+            missing_fields.append(f)
+    het_id = str(entry.get("het_id") or "").strip().upper()
+    cocrystal_het = str(entry.get("cocrystal_het") or "").strip().upper()
+    if not (het_id or cocrystal_het):
+        missing_fields.append("het_id|cocrystal_het")
+    if missing_fields:
+        result = {
+            "status": "FAIL",
+            "target": target,
+            "index_key": lookup_key,
+            "reason": "Master Index 條目缺少必填欄位",
+            "schema_ok": False,
+            "missing_fields": missing_fields,
+            "index_validation_mode": "manual_required",
+            "manual_verification_required": True,
+            "manual_verified": bool(manual_verified),
+            "rcsb_verified": False,
+        }
+        save_stage(session_dir, 3, "index", result)
+        raise ValueError(
+            f"Stage 03 FAIL: {result['reason']} ({', '.join(missing_fields)})"
+        )
 
     rec_pdb = str(entry.get("pdb_id", "")).upper()
     in_pdb = pdb_id.strip().upper()
@@ -518,27 +562,40 @@ def stage03_index(
 
     result = {
         "status": status,
-        "target": key,
+        "target": target,
+        "index_key": lookup_key,
         "pdb_id": rec_pdb or in_pdb,
         "input_pdb": in_pdb,
         "state": entry.get("state"),
         "family": entry.get("family"),
         "pocket_rule": entry.get("pocket_rule"),
-        "cocrystal_het": entry.get("cocrystal_het"),
+        "cocrystal_het": cocrystal_het,
+        "het_id": het_id,
         "override": entry.get("override") or {},
         "notes": entry.get("notes"),
+        "schema_ok": True,
+        "missing_fields": [],
+        "index_validation_mode": "manual_required",
+        "manual_verification_required": True,
+        "manual_verified": bool(manual_verified),
+        "rcsb_verified": False,
     }
     if warning:
         result["warning"] = warning
 
     save_stage(session_dir, 3, "index", result)
-    print(f"  ✓ Target: {key} | Family: {entry.get('family')} | State: {entry.get('state')}")
-    print(f"  ✓ Pocket rule: {entry.get('pocket_rule')} | HET: {entry.get('cocrystal_het')}")
+    print(
+        f"  [OK] Target: {target} | Index key: {lookup_key} | "
+        f"Family: {entry.get('family')} | State: {entry.get('state')}"
+    )
+    print(f"  [OK] Pocket rule: {entry.get('pocket_rule')} | HET: {cocrystal_het or het_id}")
     if entry.get("override"):
-        print(f"  ✓ Override: {entry.get('override')}")
-    print(f"  → Status: {result['status']}")
+        print(f"  [OK] Override: {entry.get('override')}")
+    print(f"  [STATUS] {result['status']}")
     if warning:
-        print(f"  ⚠ {warning}")
+        print(f"  [WARN] {warning}")
+    if not manual_verified:
+        print("  [WARN] 本版未自動連線 RCSB 驗證 index；請使用者手動確認 PDB/CCD 對應。")
     return result
 
 
@@ -548,6 +605,8 @@ def run_module1(
     target: str,
     pdb_id: str,
     index_path: Path | None = None,
+    index_key: str | None = None,
+    manual_verified: bool = False,
     session_id: str | None = None,
     drug_id: str | None = None,
     drug_label: str | None = None,
@@ -568,8 +627,13 @@ def run_module1(
         "created": datetime.now().isoformat(),
         "smiles_input": smiles,
         "target": target,
+        "index_key": (index_key or target).strip().upper(),
         "pdb_id": pdb_id,
         "index_path": str((index_path or DEFAULT_INDEX_PATH).resolve()),
+        "index_validation_mode": "manual_required",
+        "manual_verification_required": True,
+        "manual_verified": bool(manual_verified),
+        "rcsb_verified": False,
         "drug_id": drug_id,
         "drug_label": drug_label,
     }
@@ -584,9 +648,16 @@ def run_module1(
     try:
         r1 = stage01_smiles(smiles, session_dir)
         r2 = stage02_pdb(pdb_id, session_dir, allow_network=allow_network)
-        r3 = stage03_index(target, pdb_id, session_dir, index_path=index_path)
+        r3 = stage03_index(
+            target,
+            pdb_id,
+            session_dir,
+            index_path=index_path,
+            index_key=index_key,
+            manual_verified=manual_verified,
+        )
     except ValueError as e:
-        print(f"\n❌ Module 1 中止: {e}")
+        print(f"\n[ERROR] Module 1 中止: {e}")
         return None
 
     finalize_module1_manifest(
@@ -624,7 +695,12 @@ def run_module1(
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="MolGate Module 1 — input validation")
     p.add_argument("--smiles", required=True, help="輸入 SMILES")
-    p.add_argument("--target", required=True, help="Master Index 鍵名，例：D2R_7DFP、COX2")
+    p.add_argument(
+        "--target",
+        required=True,
+        help="Target 顯示名或預設 index 鍵名（若給 --index-key，將以 --index-key 優先）",
+    )
+    p.add_argument("--index-key", default=None, help="Master Index 鍵名（建議明確提供）")
     p.add_argument("--pdb-id", required=True, dest="pdb_id", help="RCSB PDB ID，例：7DFP")
     p.add_argument("--index", type=Path, default=None, help="master_index.json 路徑")
     p.add_argument("--drug-id", default=None, help="藥物管理用 ID（例：M01、IBU-001）")
@@ -634,6 +710,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="允許 Stage 02 連線下載 PDB（預設離線，只用本地資料）",
     )
+    p.add_argument(
+        "--manual-verified",
+        action="store_true",
+        help="標記 index 條目已由使用者人工核對（本版不自動做 RCSB 檢驗）",
+    )
     args = p.parse_args(argv)
 
     r = run_module1(
@@ -641,6 +722,8 @@ def main(argv: list[str] | None = None) -> int:
         args.target,
         args.pdb_id,
         index_path=args.index,
+        index_key=args.index_key,
+        manual_verified=args.manual_verified,
         drug_id=args.drug_id,
         drug_label=args.drug_label,
         allow_network=args.allow_network,

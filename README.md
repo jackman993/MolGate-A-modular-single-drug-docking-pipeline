@@ -1,117 +1,179 @@
-# MolGate-A-modular-single-drug-docking-pipeline
-A modular single-drug docking pipeline for structure-based screening and reproducible workflow experiments. > Current release focuses on stability and reproducibility. > Runtime console logs may still contain Traditional Chinese messages in some modules.
+# MolGate CMD Release (DrugOps)
+
+Standalone **command-line** package for the DrugOps / MolGate virtual-screening pipeline (Windows CMD, no web UI).
+
+## Repository layout
+
+| Path | Description |
+|------|-------------|
+| `engines/` | Module 1–5 Python pipeline scripts |
+| `engines/config/drug_catalog_300.csv` | **300-entry** drug–target catalog (`--catalog-drug-id`) |
+| `engines/master_index.json` | Structural anchor registry (**304** index keys) |
+| `results/` | **300-case** registry + batch run outcomes (paper Data Availability) |
+| `tool/vina/vina.exe` | AutoDock Vina (Windows) |
+| `*.bat` | One-click launch scripts |
+| `run_from_scratch.bat` | Full 27-step pipeline demo (DRUGS index 0, Ibuprofen) |
+
 ---
-## Highlights
-- Modular 5-stage pipeline (Input -> Ligand -> Receptor -> Pocket -> Docking/Review)
-- Session-based outputs for reproducibility
-- Meeko-first strategy with fallback options (Open Babel / MGLTools, depending on module)
-- Supports direct anchor and proxy anchor index design (`anchor_mode`)
+
+## Quick start (Windows CMD)
+
+```bat
+cd /d C:\path\to\MolGate-CMD-Release
+check_env.bat
+install_deps.bat
+run_from_scratch.bat
+```
+
 ---
-## Repository Structure
-MolGate/
 
-├── molgate_runner.py
+## Running a single drug
 
-├── molgate_module1.py
+### CreaDrug24 demo (`--drug 0` … `--drug 23`)
 
-├── molgate_module2_engineB.py
+Built-in array of 24 seed drugs (maps to catalog `drug_id` 1–24):
 
-├── molgate_module2_engineC.py
+```bat
+run_runner_pretty.bat --drug 0 --from-stage 1 --allow-network --non-interactive --vina-bin "%CD%\tool\vina\vina.exe"
+```
 
-├── molgate_module3_engineA.py
+ASCII-safe output (any CMD code page):
 
-├── molgate_module3_engineB.py
+```bat
+run_runner_ascii.bat --drug 0 --from-stage 1 --allow-network --non-interactive --vina-bin "%CD%\tool\vina\vina.exe"
+```
 
-├── molgate_module3_engineC.py
+### Catalog-300 (`--catalog-drug-id 1` … `300`)
 
-├── molgate_module4_engineA.py
+All **300** curated entries are in `engines/config/drug_catalog_300.csv`. Run any entry by catalog ID:
 
-├── molgate_module4_engineB.py
+```bat
+run_catalog_drug.bat 26
+```
 
-├── molgate_module4_engineC.py
+Equivalent:
 
-├── molgate_module5_engineA.py
+```bat
+run_runner_pretty.bat --catalog-drug-id 26 --from-stage 1 --allow-network --non-interactive --vina-bin "%CD%\tool\vina\vina.exe"
+```
 
-├── molgate_module5_engineB.py
+| Catalog range | How to run |
+|---------------|------------|
+| `drug_id` 1–24 | `--drug 0` … `--drug 23` **or** `--catalog-drug-id 1` … `24` |
+| `drug_id` 25–300 | `--catalog-drug-id 25` … `300` |
 
-├── config/
+**Sync catalog from UI workspace** (after editing `moltgate_UI/config/`):
 
-├── docs/
+```bat
+scripts\sync_catalog_from_ui.bat
+```
 
-├── data/
+**Limitation:** This CMD bundle does **not** include UI `anchor_routing`. Proxy entries use the PDB/HET listed in the catalog CSV directly. Outcomes may differ slightly from batch summaries where `route_status` is `same_pdb_surrogate` or `cross_pdb_proxy`.
 
-├── molgate_sessions/
+---
 
-└── tools/
+## Catalog-300 results (paper release)
 
+The `results/` folder ships the **300-entry structural anchor registry** and **276 automated batch pipeline outcomes** (`drug_id` 25–300).
 
-## Pipeline Overview
-Module 1: Input validation, PDB loading, index lookup
-Module 2: Ligand protonation/tautomer handling and ligand PDBQT generation
-Module 3: Receptor preparation and receptor PDBQT generation
-Module 4: Pocket ligand identification and docking box generation
-Module 5: Vina docking, QC, and review decision
-See docs/PIPELINE_OVERVIEW.md for details.
-Prerequisites
-Python 3.11+
-AutoDock Vina (recommended local binary path under tools/vina/)
-Optional tools depending on chosen engine:
-meeko
-Open Babel (obabel)
-MGLTools (prepare_receptor4.py) for legacy fallback
+### Files
 
-## Installation
-Quick Start
-### 1) Prepare index files
-Copy sample config files and edit for your targets:
-config/master_index.sample.json -> your master_index.json
-config/drug_library.sample.json (optional)
-### 2) Run a single drug with runner
-### 3) Resume from a later module (example)
+| File | Description |
+|------|-------------|
+| `results/catalog_300_registry.csv` | All **300** curated entries: SMILES, `index_key`, PDB, HET, tier, `anchor_mode` |
+| `results/catalog_300_run_summary.csv` | Per-entry outcomes: ΔG, `qc_pass`, `paper_outcome`, route, `session_id` |
+| `results/catalog_300_run_summary.json` | Same data, machine-readable |
+| `results/stats_300.json` | Aggregate statistics |
 
-<img width="1077" height="652" alt="image" src="https://github.com/user-attachments/assets/13eadd18-29af-4672-aa2c-48a2b1d9e252" />
+### Coverage
 
+| Range | Count | Source |
+|-------|------:|--------|
+| `drug_id` 1–24 | 24 | **CreaDrug24 seed set** — in registry; batch runner skipped these. Reproduce via `--drug 0` … `--drug 23`. |
+| `drug_id` 25–300 | 276 | **Batch pipeline runs** — rows in `catalog_300_run_summary.*` |
+| **Registry total** | **300** | Full catalog in `catalog_300_registry.csv` |
 
+### Batch statistics (`stats_300.json`, 276 runs)
 
+| Metric | Value |
+|--------|------:|
+| Completed (`status=ok`) | 232 |
+| Pipeline-fail | 44 |
+| **Pass** (`qc_pass=true`) | **181** |
+| **QC-flagged** (`qc_pass=false`) | **51** |
+| Tier 1 / Tier 2 | 151 / 125 |
+| Best affinity range (kcal/mol) | −11.66 … −2.73 (mean −7.96) |
 
-## Engine Policy (Current)
-Ligand path (Module 2 Engine C): default meeko
-Receptor path (Module 3 Engine C): auto = Meeko -> Open Babel -> MGLTools
-Recommended practice: use Meeko first; fallback only on failure or quality concerns
+**Route resolution** (batch UI runs; CMD reruns may differ):
 
-## Index Design Notes
-master_index.json is currently the critical control plane.
-Recommended required fields per entry:
-pdb_id
-het_id / cocrystal_het
-pocket_rule
-target_drug
-common_name
-notes
-anchor_mode (direct or proxy, recommended)
-See config/index_schema.md and docs/USER_INDEX_GUIDE.md.
+| `route_status` | Count |
+|----------------|------:|
+| `same_pdb_surrogate` | 137 |
+| `direct_ok` | 71 |
+| `no_route` | 34 |
+| `cross_pdb_proxy` | 17 |
+| `unknown` | 17 |
 
-## Known Limitations
-Index generation is not yet fully automated from remote APIs
-Some modules still output Traditional Chinese console messages
-PDB/CCD mapping may require manual validation for difficult targets
-Legacy toolchain fallback may produce format edge cases requiring cleanup
+Regenerate results bundle from the UI workspace:
 
-## Troubleshooting
-See docs/TROUBLESHOOTING.md.
-Common issues include:
-Vina PDBQT parsing errors
-Windows console encoding problems
-Meeko --allow_bad_res behavior and receptor quality checks
+```bat
+python ..\moltgate_UI\scripts\export_catalog_300_release.py --out-dir results
+```
 
-## Reproducibility
-Each run creates a session folder with staged JSON artifacts
-Keep molgate_sessions/ out of git for clean repository history
+---
 
-## Roadmap
-Full English runtime logs
-Better automated index assistant (API + validation layer)
-Stronger receptor/ligand quality gates before docking
-Batch mode for high-throughput runs
-## License
-[Choose and add your license here, e.g. MIT]
+## Outcome taxonomy (DrugOps paper)
+
+The **paper** classifies each run using **automated QC** (`qc_pass` in `docking_result.json` / `final_report.json`), **not** the Stage-27 review label.
+
+| Paper class | Condition |
+|-------------|-----------|
+| **Pass** | Docking complete **and** `qc_pass=true` |
+| **QC-flagged** | Docking complete **and** `qc_pass=false` |
+| **Pipeline-fail** | No complete docking outcome |
+
+With `--non-interactive`, Stage 27 is **forced to ACCEPT** so every completed run writes `final_report.json`. That **ACCEPT** means *artifacts archived* — it does **not** mean QC passed.
+
+Example (Ibuprofen / COX2 template): `qc_pass=false`, flag `OUT_OF_POCKET_MAJORITY` → paper class **QC-flagged**, even if the terminal shows Stage-27 ACCEPT.
+
+Check classification:
+
+```bat
+findstr qc_pass engines\molgate_sessions\YOUR_SESSION\docking_result.json
+```
+
+---
+
+## Data Availability (paper citation text)
+
+> The 300-entry structural anchor registry and per-entry docking summary statistics are available in the MolGate CMD release (`results/catalog_300_registry.csv`, `results/catalog_300_run_summary.csv`, `results/stats_300.json`) at GitHub tag **v1.0.0-catalog300**. The command-line pipeline is in the same repository (`engines/`). Interactive browsing is provided separately (Hugging Face Space). Full session artifacts are available on request.
+
+Suggested release tag: **`v1.0.0-catalog300`**
+
+---
+
+## Dependencies
+
+- Python 3.10+ (conda recommended)
+- rdkit, meeko, scipy, gemmi, biopython
+- Run `install_deps.bat` to install most packages
+
+---
+
+## Publishing to GitHub
+
+1. Create a new GitHub repository.
+2. Push the **entire** `MolGate-CMD-Release` folder (`.bat` files included).
+3. Do **not** push run outputs under `engines/molgate_sessions/` (listed in `.gitignore`).
+
+```bat
+cd /d C:\path\to\MolGate-CMD-Release
+git init
+git add .
+git commit -m "Add MolGate CMD release with catalog-300 results"
+git branch -M main
+git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+git push -u origin main
+git tag v1.0.0-catalog300
+git push --tags
+```

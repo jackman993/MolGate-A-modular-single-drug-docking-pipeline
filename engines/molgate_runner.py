@@ -5,8 +5,10 @@ MolGate — Single Drug Runner
 
 用法：
   python molgate_runner.py
-  python molgate_runner.py --drug 0        # 直接選第 0 個藥（目前 0–11）
-  python molgate_runner.py --from-stage 3  # 從 Module 3 繼續（已有 session）
+  python molgate_runner.py --drug 0        # 直接選第 0 個藥（DRUGS 陣列索引）
+  python molgate_runner.py --catalog-drug-id 22   # 用外部 catalog 的 drug_id（見各藥 catalog_drug_id）
+  python molgate_runner.py --from-stage 3       # 從 Module 3 繼續（已有 session）
+  python molgate_runner.py --drug 21 --non-interactive --allow-network   # 無本地 PDB 時允許從 RCSB 下載
 """
 
 from __future__ import annotations
@@ -139,6 +141,117 @@ DRUGS = [
         "het_id":  "8NU",
         "note":    "Proxy：無 quetiapine 直接受體共晶；以 DRD2/6CM4 口袋（共晶 8NU）當暫代，勿當 direct benchmark",
     },
+    {
+        "drug":    "Erlotinib",
+        "index_key": "EGFR_ERLOTINIB",
+        "smiles":  "COCCOc1ccc2ncnc(Nc3cccc(c3)C#C)c2c1",
+        "target":  "EGFR",
+        "pdb_id":  "1M17",
+        "het_id":  "AQ4",
+        "note":    "EGFR–Erlotinib（1M17，CCD AQ4）；direct cocrystal anchor，穩定 kinase benchmark",
+    },
+    {
+        "drug":    "Vardenafil",
+        "index_key": "PDE5_VARDENAFIL",
+        "smiles":  "CCCCC1=C2N(C)C(=O)N(C(C2=NC=C1S(=O)(=O)N3CCN(CC3)C)OCC)C",
+        "target":  "PDE5",
+        "pdb_id":  "1UDT",
+        "het_id":  "VIA",
+        "note":    "PDE5–Vardenafil（1UDT，CCD VIA）；direct cocrystal anchor，可與 Sildenafil 作同家族配對基準",
+    },
+    {
+        "drug":    "Apixaban",
+        "index_key": "FXA_APIXABAN",
+        "smiles":  "O=C(N)c1cnn2c1N(c1ccc(OC)cc1)CC(c1ccc(N3CCCCC3=O)cc1)=CC2=O",
+        "target":  "FACTOR_XA",
+        "pdb_id":  "2P16",
+        "het_id":  "GG2",
+        "note":    "Factor Xa–Apixaban（2P16，CCD GG2）；direct cocrystal anchor，抗凝血系列擴充基準",
+    },
+    {
+        "drug":    "Rivaroxaban",
+        "index_key": "FXA_RIVAROXABAN",
+        "smiles":  "Clc1ccc(cc1)C2=C(CN3CCOCC3)N(C(=O)N[C@H]4CO[C@H](C4)c5ccc(s5)Cl)C(=O)N2",
+        "target":  "FACTOR_XA",
+        "pdb_id":  "2W26",
+        "het_id":  "RIV",
+        "note":    "Factor Xa–Rivaroxaban（2W26，CCD RIV）；direct cocrystal anchor，可與 Apixaban 作同家族配對基準",
+    },
+    {
+        "drug":    "Vorinostat",
+        "index_key": "HDAC2_VORINOSTAT",
+        "smiles":  "O=C(NO)CCCCCCC(=O)Nc1ccccc1",
+        "target":  "HDAC2",
+        "pdb_id":  "4LXZ",
+        "het_id":  "SHH",
+        "note":    "HDAC2–Vorinostat（4LXZ，CCD SHH）；direct cocrystal anchor，適合鋅依賴 HDAC 基準",
+    },
+    {
+        "drug":    "Nilotinib",
+        "index_key": "ABL_NILOTINIB",
+        "smiles":  "CC1=NC(=CC(=N1)Nc2ccc(cc2)C(=O)Nc3cc(ccc3N4CCN(C)CC4)C(F)(F)F)C",
+        "target":  "ABL",
+        "pdb_id":  "3CS9",
+        "het_id":  "NIL",
+        "note":    "ABL–Nilotinib（3CS9，CCD NIL）；direct cocrystal anchor，第二代 ABL kinase 基準",
+    },
+    {
+        "drug":    "Bosutinib",
+        "index_key": "ABL_BOSUTINIB",
+        "smiles":  "COc1cc2c(Nc3c(Cl)cc(c(c3Cl)OC)Cl)nc(C#N)cc2cc1OCCCN1CCN(C)CC1",
+        "target":  "ABL",
+        "pdb_id":  "3UE4",
+        "het_id":  "DB8",
+        "note":    "ABL–Bosutinib（3UE4，CCD DB8）；direct cocrystal anchor，建議作 ABL 家族配對基準",
+    },
+    {
+        "drug":    "Ponatinib",
+        "index_key": "DDR1_PONATINIB",
+        "smiles":  "Cc1cc(ccc1Nc2ncc(cn2)C#Cc3cnc4ccccc4n3)C(=O)Nc5ccc(cc5)CN6CCN(CC6)C",
+        "target":  "DDR1",
+        "pdb_id":  "3ZOS",
+        "het_id":  "0LI",
+        "note":    "DDR1–Ponatinib（3ZOS，CCD 0LI）；direct cocrystal anchor，ponatinib 的清晰直錨點",
+    },
+    {
+        "drug":    "Cilomilast",
+        "index_key": "PDE4D_CILOMILAST",
+        "smiles":  "COc1ccc(cc1OC2CCCC2)C3(CCC(CC3)C(=O)O)C#N",
+        "target":  "PDE4D",
+        "pdb_id":  "1XOM",
+        "het_id":  "CIO",
+        "note":    "PDE4D–Cilomilast（1XOM，CCD CIO）；direct cocrystal anchor，PDE4 家族穩定 benchmark",
+    },
+    {
+        "drug":    "Roflumilast",
+        "catalog_drug_id": 22,
+        "index_key": "PDE4D_ROFLUMILAST",
+        "smiles":  "c1cc(c(cc1C(=O)Nc2c(cncc2Cl)Cl)OCC3CC3)OC(F)F",
+        "target":  "PDE4D",
+        "pdb_id":  "3G4L",
+        "het_id":  "ROF",
+        "note":    "PDE4D–Roflumilast（3G4L，CCD ROF）；direct cocrystal anchor，可與 Cilomilast 成對基準",
+    },
+    {
+        "drug":    "Alogliptin",
+        "catalog_drug_id": 23,
+        "index_key": "DPP4_ALOGLIPTIN",
+        "smiles":  "CN1C(=O)C=C(N(C1=O)Cc2ccccc2C#N)N3CCC[C@H](C3)N",
+        "target":  "DPP4",
+        "pdb_id":  "2ONC",
+        "het_id":  "SY1",
+        "note":    "DPP4–Alogliptin／2ONC：正式索引以 PDB 殘基 SY1 為準（CCD T22）；與 master_index DPP4_ALOGLIPTIN 一致",
+    },
+    {
+        "drug":    "Linagliptin",
+        "catalog_drug_id": 24,
+        "index_key": "DPP4_LINAGLIPTIN",
+        "smiles":  "CC#CCn1c2c(nc1N3CCC[C@H](C3)N)N(C(=O)N(C2=O)Cc4nc(c5ccccc5n4)C)C",
+        "target":  "DPP4",
+        "pdb_id":  "2RGU",
+        "het_id":  "356",
+        "note":    "DPP4–Linagliptin（2RGU，CCD 356）；direct cocrystal anchor，可與 Alogliptin 配對",
+    },
 ]
 
 _SESSION_ID_RE = re.compile(r"^[a-fA-F0-9]{16}$")
@@ -211,12 +324,15 @@ def load_master_index() -> dict[str, dict]:
 
 
 def validate_drug_index_entry(drug: dict) -> tuple[bool, str]:
-    """跑前檢查：index key 是否存在，且 pdb/het 與 runner 設定是否一致。"""
+    """跑前檢查：index key 是否存在；catalog 列以 CSV 為準，DRUGS demo 仍核對 pdb/het。"""
     key = target_key(drug)
     idx = load_master_index()
     ent = idx.get(key)
     if ent is None:
-        return False, f"Master Index 缺少 key={key}（請先補 master_index.json）"
+        return False, f"Master Index 缺少 key={key}（請執行 scripts/sync_catalog_from_ui.bat）"
+
+    if drug.get("_from_catalog"):
+        return True, "OK"
 
     mism = []
     p_runner = str(drug.get("pdb_id", "")).strip().upper()
@@ -233,8 +349,41 @@ def validate_drug_index_entry(drug: dict) -> tuple[bool, str]:
         return False, "；".join(mism)
     return True, "OK"
 
-def select_drug(default: int | None) -> tuple[int, dict]:
+def select_drug(default: int | None, catalog_drug_id: int | None) -> tuple[int, dict]:
+    if default is not None and catalog_drug_id is not None:
+        print("❌ 請勿同時指定 --drug 與 --catalog-drug-id")
+        sys.exit(2)
+
+    if catalog_drug_id is not None:
+        cid = int(catalog_drug_id)
+        for i, d in enumerate(DRUGS):
+            legacy = d.get("catalog_drug_id")
+            if legacy is not None and int(legacy) == cid:
+                print(
+                    f"\n  選定藥物（catalog drug_id={cid}，DRUGS demo）："
+                    f"[{i}] {d['drug']} / {d['target']} (index_key={target_key(d)})"
+                )
+                return i, d
+        try:
+            from molgate_catalog import drug_by_catalog_id
+
+            drug = drug_by_catalog_id(cid)
+        except KeyError:
+            print(f"❌ 找不到 catalog drug_id={cid}（有效範圍 1–300，請先 sync catalog）")
+            sys.exit(2)
+        except FileNotFoundError as exc:
+            print(f"❌ {exc}")
+            sys.exit(2)
+        print(
+            f"\n  選定藥物（catalog drug_id={cid}）："
+            f"{drug['drug']} / {drug['target']} (index_key={target_key(drug)})"
+        )
+        return -1, drug
+
     if default is not None:
+        if not (0 <= default < len(DRUGS)):
+            print(f"❌ --drug 編號超出範圍：{default}（有效 0–{len(DRUGS) - 1}）")
+            sys.exit(2)
         d = DRUGS[default]
         print(f"\n  選定藥物：[{default}] {d['drug']} / {d['target']} (index_key={target_key(d)})")
         return default, d
@@ -298,15 +447,20 @@ def find_latest_session(drug: dict) -> Path | None:
     return None
 
 # ── Pipeline 各 Module ────────────────────────────────
-def run_module1(drug: dict) -> Path | None:
+def run_module1(drug: dict, *, allow_network: bool) -> Path | None:
     banner("MODULE 1 — Input Validation")
-    code = run([
+    cmd1: list[str] = [
         PYTHON, str(BASE_DIR / "molgate_module1.py"),
         "--smiles",  drug["smiles"],
         "--target",  target_key(drug),
         "--pdb-id",  drug["pdb_id"],
-        "--allow-network",
-    ])
+    ]
+    cid = drug.get("catalog_drug_id")
+    if cid is not None:
+        cmd1 += ["--drug-id", str(int(cid)), "--drug-label", str(drug.get("drug", ""))]
+    if allow_network:
+        cmd1.append("--allow-network")
+    code = run(cmd1)
     if code != 0:
         print("❌ Module 1 失敗")
         return None
@@ -346,7 +500,7 @@ def run_module2(sd: Path, drug: dict) -> bool:
             return False
     return True
 
-def run_module3(sd: Path, drug: dict) -> bool:
+def run_module3(sd: Path, drug: dict, *, non_interactive: bool) -> bool:
     banner("MODULE 3 — Protein Preparation")
     for script, label in [
         ("molgate_module3_engineA.py", "Engine A：PDB 清理"),
@@ -354,17 +508,20 @@ def run_module3(sd: Path, drug: dict) -> bool:
         ("molgate_module3_engineC.py", "Engine C：Receptor PDBQT"),
     ]:
         print(f"\n  [{label}]")
-        code = run([
+        cmd3: list[str] = [
             PYTHON, str(BASE_DIR / script),
             "--session-dir", str(sd),
             "--target", target_key(drug),
-        ])
+        ]
+        if script == "molgate_module3_engineB.py" and non_interactive:
+            cmd3 += ["--non-interactive", "--auto-hets", "remove_all"]
+        code = run(cmd3)
         if code != 0:
             print(f"❌ Module 3 {script} 失敗")
             return False
     return True
 
-def run_module4(sd: Path, drug: dict) -> bool:
+def run_module4(sd: Path, drug: dict, *, non_interactive: bool) -> bool:
     banner("MODULE 4 — Pocket Definition")
     for script, label in [
         ("molgate_module4_engineA.py", "Engine A：HETATM 掃描"),
@@ -372,17 +529,22 @@ def run_module4(sd: Path, drug: dict) -> bool:
         ("molgate_module4_engineC.py", "Engine C：口袋中心計算"),
     ]:
         print(f"\n  [{label}]")
-        code = run([
+        cmd4: list[str] = [
             PYTHON, str(BASE_DIR / script),
             "--session-dir", str(sd),
             "--target", target_key(drug),
-        ])
+        ]
+        if script == "molgate_module4_engineB.py" and non_interactive:
+            cmd4.append("--non-interactive")
+        if script == "molgate_module4_engineC.py" and non_interactive:
+            cmd4.append("--non-interactive")
+        code = run(cmd4)
         if code != 0:
             print(f"❌ Module 4 {script} 失敗")
             return False
     return True
 
-def run_module5(sd: Path, drug: dict, vina_bin: str | None) -> bool:
+def run_module5(sd: Path, drug: dict, vina_bin: str | None, *, non_interactive: bool) -> bool:
     banner("MODULE 5 — Docking & Review")
 
     resolved_vina_bin = vina_bin
@@ -411,10 +573,13 @@ def run_module5(sd: Path, drug: dict, vina_bin: str | None) -> bool:
         return False
 
     print("\n  [Engine B：人工審核]")
-    code = run([
+    cmd5b: list[str] = [
         PYTHON, str(BASE_DIR / "molgate_module5_engineB.py"),
         "--session-dir", str(sd),
-    ])
+    ]
+    if non_interactive:
+        cmd5b += ["--decision", "ACCEPT"]
+    code = run(cmd5b)
     if code != 0:
         print("❌ Module 5 Engine B 失敗")
         return False
@@ -424,17 +589,35 @@ def run_module5(sd: Path, drug: dict, vina_bin: str | None) -> bool:
 # ── 主流程 ────────────────────────────────────────────
 def main():
     ap = argparse.ArgumentParser(description="MolGate Single Drug Runner")
-    ap.add_argument("--drug",       type=int, default=None, help="藥物編號（0-11）")
+    ap.add_argument("--drug",       type=int, default=None, help=f"DRUGS 陣列索引（0–{len(DRUGS) - 1}）")
+    ap.add_argument(
+        "--catalog-drug-id",
+        type=int,
+        default=None,
+        help="Catalog drug_id 1–300（engines/config/drug_catalog_300.csv；CreaDrug24 亦可用 --drug 0–23）",
+    )
     ap.add_argument("--from-stage", type=int, default=1,    help="從哪個 Module 開始（1-5）")
     ap.add_argument("--session-dir",default=None,           help="指定 session 目錄（from-stage > 1 時使用）")
     ap.add_argument("--vina-bin",   default=None,           help="AutoDock Vina 執行檔路徑")
+    ap.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="M3B/M4B/M4C 使用 --non-interactive；M5B 使用 --decision ACCEPT（M2B 仍可能詢問）",
+    )
+    ap.add_argument(
+        "--allow-network",
+        action="store_true",
+        help="Module 1 Stage 02：無本地 PDB 時允許 HTTPS 下載（傳給 molgate_module1.py）",
+    )
     args = ap.parse_args()
 
     print_startup_banner()
 
     # 選藥
-    drug_idx, drug = select_drug(args.drug)
+    drug_idx, drug = select_drug(args.drug, args.catalog_drug_id)
     print(f"\n  藥物：{drug['drug']}")
+    if drug.get("catalog_drug_id") is not None:
+        print(f"  catalog drug_id：{drug['catalog_drug_id']}（寫入 session_meta / registry）")
     print(
         f"  Target：{drug['target']} | index_key：{target_key(drug)} "
         f"| PDB：{drug['pdb_id']} | HET：{drug['het_id']}"
@@ -463,11 +646,11 @@ def main():
         sd = None
 
     print(f"\n  從 Module {from_stage} 開始\n")
-    input("  按 Enter 開始...")
+    print("  自動開始執行（略過 Enter 確認）")
 
     # ── Module 1 ──
     if from_stage <= 1:
-        sd = run_module1(drug)
+        sd = run_module1(drug, allow_network=args.allow_network)
         if sd is None:
             sys.exit(1)
         print(f"\n  Session 建立：{sd}")
@@ -479,17 +662,17 @@ def main():
 
     # ── Module 3 ──
     if from_stage <= 3:
-        if not run_module3(sd, drug):
+        if not run_module3(sd, drug, non_interactive=args.non_interactive):
             sys.exit(1)
 
     # ── Module 4 ──
     if from_stage <= 4:
-        if not run_module4(sd, drug):
+        if not run_module4(sd, drug, non_interactive=args.non_interactive):
             sys.exit(1)
 
     # ── Module 5 ──
     if from_stage <= 5:
-        if not run_module5(sd, drug, args.vina_bin):
+        if not run_module5(sd, drug, args.vina_bin, non_interactive=args.non_interactive):
             sys.exit(1)
 
     # ── 完成 ──

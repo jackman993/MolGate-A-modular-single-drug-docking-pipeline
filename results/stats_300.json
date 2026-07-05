@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-07-05T02:37:32.674744+00:00",
+  "registry_entries": 300,
+  "run_summary_entries": 276,
+  "drug_id_min": 25,
+  "drug_id_max": 300,
+  "status_counts": {
+    "ok": 232,
+    "fail": 44
+  },
+  "paper_outcome_counts": {
+    "QC-flagged": 51,
+    "Pass": 181,
+    "Pipeline-fail": 44
+  },
+  "route_status_counts": {
+    "direct_ok": 71,
+    "unknown": 17,
+    "same_pdb_surrogate": 137,
+    "cross_pdb_proxy": 17,
+    "no_route": 34
+  },
+  "tier_counts": {
+    "2": 125,
+    "1": 151
+  },
+  "affinity_kcal_mol": {
+    "count": 232,
+    "min": -11.66,
+    "max": -2.733,
+    "mean": -7.963
+  },
+  "qc_pass_true": 181,
+  "qc_pass_false": 51,
+  "missing_run_drug_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24
+  ],
+  "extra_run_drug_ids": []
+}
