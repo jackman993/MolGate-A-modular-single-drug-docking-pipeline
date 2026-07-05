@@ -99,6 +99,12 @@ def build_engine_entry(
         kw = entry["override"].get("keep_water")
         if isinstance(kw, bool):
             entry["keep_water"] = kw
+    try:
+        from molgate_anchor_routing import merge_session_route_overrides
+
+        entry = merge_session_route_overrides(entry, session_dir)
+    except ImportError:
+        pass
     return entry
 
 FAMILY_PREP_PROFILE = {

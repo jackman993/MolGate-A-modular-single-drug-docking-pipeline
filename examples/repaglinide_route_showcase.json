@@ -1,0 +1,26 @@
+{
+  "showcase": "Repaglinide (catalog drug_id=62, REPAGLINIDE_KATP)",
+  "paper_role": "Runtime $f_route converts missing direct HET into cross-PDB proxy (batch N=300).",
+  "catalog_declared": {
+    "drug_id": 62,
+    "pdb_id": "3VE0",
+    "het_id": "REP",
+    "anchor_mode": "direct"
+  },
+  "batch_outcome_reference": {
+    "effective_pdb_id": "3SYQ",
+    "route_status": "cross_pdb_proxy",
+    "route_fallback": true,
+    "proxy_source_key": "GLYBURIDE_KATP",
+    "effective_het_note": "CMD routing picks template ligand present in proxy PDB (e.g. PIO on 3SYQ); batch summary CSV may list catalog HET REP in het_id column",
+    "best_affinity_kcal_mol": -7.158,
+    "paper_outcome": "Pass",
+    "session_id": "e21bd68b6c04e727"
+  },
+  "reproduce_cmd": "run_catalog_drug.bat 62",
+  "expected_artifacts": [
+    "engines/molgate_sessions/<session_id>/route_resolution.json",
+    "engines/molgate_sessions/<session_id>/session_index.json"
+  ],
+  "note": "After routing, Module 1 runs with the effective PDB/HET from route_resolution.json."
+}

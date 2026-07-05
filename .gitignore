@@ -1,6 +1,8 @@
 # runtime outputs
 engines/molgate_sessions/*
 !engines/molgate_sessions/.gitkeep
+engines/data/pdb/*
+!engines/data/pdb/.gitkeep
 __pycache__/
 *.pyc
 *.pyo

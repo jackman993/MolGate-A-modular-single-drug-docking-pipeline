@@ -104,23 +104,53 @@ def stage22_ligand(
 ) -> dict[str, Any]:
     print("\n[Stage 22] 配體身份確認...")
 
-    s21 = load_stage21(session_dir)
-    candidates = s21.get("candidates", [])
-
-    if not candidates:
-        result = {
-            "status": "FAIL",
-            "reason": "Stage 21 無候選配體，無法確認配體身份",
-        }
-        save_stage(session_dir, 22, "ligand", result)
-        raise ValueError(f"Stage 22 FAIL: {result['reason']}")
-
     prep = load_prep_overlay(session_dir, target)
     entry = load_target_index_entry(session_dir, prep, index_path)
     if not entry:
         result = {
             "status": "FAIL",
             "reason": "無法載入 Master Index 條目（請確認 --target 與 master_index.json）",
+        }
+        save_stage(session_dir, 22, "ligand", result)
+        raise ValueError(f"Stage 22 FAIL: {result['reason']}")
+
+    s21 = load_stage21(session_dir)
+    candidates = s21.get("candidates", [])
+    route_fallback_status = ""
+
+    if not candidates:
+        try:
+            from molgate_anchor_routing import m4_recover_empty_candidates
+
+            recovery = m4_recover_empty_candidates(session_dir, entry)
+        except ImportError:
+            recovery = None
+        if recovery:
+            if recovery.get("needs_rerun_from_m1"):
+                res_obj = recovery.get("resolution")
+                result = {
+                    "status": "ROUTE_FALLBACK",
+                    "reason": (
+                        "Direct cocrystal HET missing; cross-PDB proxy route written — "
+                        "re-run from Module 1 with --allow-network (effective pdb_id updated)"
+                    ),
+                    "route_resolution": res_obj.to_json() if hasattr(res_obj, "to_json") else res_obj,
+                }
+                save_stage(session_dir, 22, "ligand", result)
+                eff = (res_obj.effective_entry if hasattr(res_obj, "effective_entry") else {}) or {}
+                raise ValueError(
+                    f"Stage 22 ROUTE_FALLBACK: {result['reason']} "
+                    f"(effective PDB {eff.get('pdb_id', '?')})"
+                )
+            entry = recovery.get("effective_entry") or entry
+            candidates = recovery.get("candidates") or []
+            route_fallback_status = getattr(recovery.get("resolution"), "reason", "") or "route_fallback"
+            print(f"  → Route fallback：{route_fallback_status}")
+
+    if not candidates:
+        result = {
+            "status": "FAIL",
+            "reason": "Stage 21 無候選配體，無法確認配體身份",
         }
         save_stage(session_dir, 22, "ligand", result)
         raise ValueError(f"Stage 22 FAIL: {result['reason']}")

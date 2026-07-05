@@ -609,6 +609,11 @@ def main():
         action="store_true",
         help="Module 1 Stage 02：無本地 PDB 時允許 HTTPS 下載（傳給 molgate_module1.py）",
     )
+    ap.add_argument(
+        "--skip-routing",
+        action="store_true",
+        help="Skip $f_route anchor resolution (not recommended; paper default uses routing)",
+    )
     args = ap.parse_args()
 
     print_startup_banner()
@@ -630,7 +635,19 @@ def main():
         print("   請先補齊/修正 master_index.json 後再跑")
         sys.exit(1)
 
+    route_resolution = None
     from_stage = args.from_stage
+
+    if from_stage <= 1 and not args.skip_routing:
+        banner("ANCHOR ROUTING — $f_route")
+        from molgate_route_runner import apply_anchor_routing
+
+        drug, route_resolution = apply_anchor_routing(
+            drug,
+            load_master_index,
+            allow_network=args.allow_network,
+        )
+        print(f"  Effective PDB：{drug['pdb_id']} | HET：{drug['het_id']}")
 
     # 確認 session
     if from_stage > 1:
@@ -653,6 +670,10 @@ def main():
         sd = run_module1(drug, allow_network=args.allow_network)
         if sd is None:
             sys.exit(1)
+        if route_resolution is not None:
+            from molgate_route_runner import attach_route_to_session
+
+            attach_route_to_session(sd, route_resolution)
         print(f"\n  Session 建立：{sd}")
 
     # ── Module 2 ──

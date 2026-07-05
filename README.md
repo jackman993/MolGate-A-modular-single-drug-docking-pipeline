@@ -1,6 +1,6 @@
-# MolGate CMD Release (DrugOps)
+# MolGate: A Modular Single-Drug Docking Pipeline (DrugOps)
 
-Standalone **command-line** package for the DrugOps / MolGate virtual-screening pipeline (Windows CMD, no web UI).
+Standalone **command-line** release for the DrugOps / MolGate virtual-screening pipeline (Windows CMD, no web UI). This release includes the catalog-300 registry, runtime anchor routing (`f_route`), automated QC taxonomy, and per-entry batch outcomes used by the DrugOps paper.
 
 ## Repository layout
 
@@ -9,6 +9,9 @@ Standalone **command-line** package for the DrugOps / MolGate virtual-screening 
 | `engines/` | Module 1–5 Python pipeline scripts |
 | `engines/config/drug_catalog_300.csv` | **300-entry** drug–target catalog (`--catalog-drug-id`) |
 | `engines/master_index.json` | Structural anchor registry (**304** index keys) |
+| `engines/molgate_anchor_routing.py` | Runtime anchor routing (`f_route`): Direct -> same-PDB surrogate -> cross-PDB proxy |
+| `engines/molgate_route_runner.py` | Runner integration for anchor routing |
+| `examples/repaglinide_route_showcase.json` | Paper showcase case for runtime routing (`drug_id=62`) |
 | `results/` | **300-case** registry + batch run outcomes (paper Data Availability) |
 | `tool/vina/vina.exe` | AutoDock Vina (Windows) |
 | `*.bat` | One-click launch scripts |
@@ -22,7 +25,7 @@ Standalone **command-line** package for the DrugOps / MolGate virtual-screening 
 ## Quick start (Windows CMD)
 
 ```bat
-cd /d C:\path\to\MolGate-CMD-Release
+cd /d C:\path\to\MolGate-A-modular-single-drug-docking-pipeline
 check_env.bat
 install_deps.bat
 run_from_scratch.bat
@@ -71,7 +74,32 @@ run_runner_pretty.bat --catalog-drug-id 26 --from-stage 1 --allow-network --non-
 scripts\sync_catalog_from_ui.bat
 ```
 
-**Limitation:** This CMD bundle does **not** include UI `anchor_routing`. Proxy entries use the PDB/HET listed in the catalog CSV directly. Outcomes may differ slightly from batch summaries where `route_status` is `same_pdb_surrogate` or `cross_pdb_proxy`.
+### Runtime anchor routing (`f_route`)
+
+Before Module 1, the runner verifies whether the catalog HET is present in the declared PDB. If not, it applies the same routing policy used in the catalog-300 study:
+
+```text
+Direct -> same-PDB surrogate -> cross-PDB proxy
+```
+
+The routing decision is written to each session as `route_resolution.json` and merged into `session_index.json` before downstream modules run.
+
+Paper showcase: **Repaglinide** (`drug_id=62`, `REPAGLINIDE_KATP`):
+
+```bat
+run_catalog_drug.bat 62
+```
+
+Expected route behavior:
+
+| Field | Value |
+|-------|-------|
+| Catalog declaration | `3VE0` / `REP` |
+| Effective route | `cross_pdb_proxy` |
+| Effective PDB | `3SYQ` |
+| Proxy source | `GLYBURIDE_KATP` |
+
+Use `--skip-routing` only for debugging legacy behavior without `f_route`.
 
 ---
 
@@ -107,7 +135,7 @@ The `results/` folder ships the **300-entry structural anchor registry** and **2
 | Tier 1 / Tier 2 | 151 / 125 |
 | Best affinity range (kcal/mol) | −11.66 … −2.73 (mean −7.96) |
 
-**Route resolution** (batch UI runs; CMD reruns may differ):
+**Route resolution** (implemented in this CMD release via `engines/molgate_anchor_routing.py`):
 
 | `route_status` | Count |
 |----------------|------:|
@@ -137,7 +165,25 @@ The **paper** classifies each run using **automated QC** (`qc_pass` in `docking_
 
 With `--non-interactive`, Stage 27 is **forced to ACCEPT** so every completed run writes `final_report.json`. That **ACCEPT** means *artifacts archived* — it does **not** mean QC passed.
 
-Example (Ibuprofen / COX2 template): `qc_pass=false`, flag `OUT_OF_POCKET_MAJORITY` → paper class **QC-flagged**, even if the terminal shows Stage-27 ACCEPT.
+Validated QC-flagged example: **Aspirin** (`drug_id=28`, `ASPIRIN_COX2`).
+
+```bat
+run_catalog_drug.bat 28
+```
+
+Observed result in this CMD release:
+
+| Field | Value |
+|-------|-------|
+| Route | `direct_ok` (`TLF` present in `5IKT`) |
+| Best affinity | `-6.688 kcal/mol` |
+| Confidence tier | `C` |
+| `qc_pass` | `false` |
+| QC flag | `OUT_OF_POCKET_MAJORITY` |
+| Stage-27 decision | `ACCEPT` |
+| Paper outcome | **QC-flagged** |
+
+This illustrates the intended separation: Stage-27 `ACCEPT` archives artifacts in batch mode, while `qc_pass=false` remains **QC-flagged** for the paper.
 
 Check classification:
 
@@ -147,9 +193,34 @@ findstr qc_pass engines\molgate_sessions\YOUR_SESSION\docking_result.json
 
 ---
 
+## Smoke tests before release
+
+Run these from the repository root:
+
+```bat
+:: direct_ok + QC-flagged case
+run_catalog_drug.bat 28
+
+:: cross-PDB proxy routing showcase
+run_catalog_drug.bat 62
+
+:: built-in CreaDrug24 seed demo
+run_runner_pretty.bat --drug 0 --from-stage 1 --allow-network --non-interactive --vina-bin "%CD%\tool\vina\vina.exe"
+```
+
+Expected artifacts:
+
+| Test | Key artifact |
+|------|--------------|
+| Aspirin `drug_id=28` | `docking_result.json` with `qc_pass=false` and `OUT_OF_POCKET_MAJORITY` |
+| Repaglinide `drug_id=62` | `route_resolution.json` with `status=cross_pdb_proxy` |
+| Ibuprofen `--drug 0` | Complete 27-stage session and final report |
+
+---
+
 ## Data Availability (paper citation text)
 
-> The 300-entry structural anchor registry and per-entry docking summary statistics are available in the MolGate CMD release (`results/catalog_300_registry.csv`, `results/catalog_300_run_summary.csv`, `results/stats_300.json`) at GitHub tag **v1.0.0-catalog300**. The command-line pipeline is in the same repository (`engines/`). Interactive browsing is provided separately (Hugging Face Space). Full session artifacts are available on request.
+> The 300-entry structural anchor registry, runtime anchor-routing implementation (`f_route`), and per-entry docking summary statistics are available in the MolGate command-line release (`engines/molgate_anchor_routing.py`, `results/catalog_300_registry.csv`, `results/catalog_300_run_summary.csv`, `results/stats_300.json`) at GitHub tag **v1.0.0-catalog300**. The command-line pipeline is in the same repository (`engines/`). Interactive browsing is provided separately (Hugging Face Space). Full session artifacts are available on request.
 
 Suggested release tag: **`v1.0.0-catalog300`**
 
@@ -166,11 +237,11 @@ Suggested release tag: **`v1.0.0-catalog300`**
 ## Publishing to GitHub
 
 1. Create a new GitHub repository.
-2. Push the **entire** `MolGate-CMD-Release` folder (`.bat` files included).
+2. Push the **entire** release folder (`.bat` files included).
 3. Do **not** push run outputs under `engines/molgate_sessions/` (listed in `.gitignore`).
 
 ```bat
-cd /d C:\path\to\MolGate-CMD-Release
+cd /d C:\path\to\MolGate-A-modular-single-drug-docking-pipeline
 git init
 git add .
 git commit -m "Add MolGate CMD release with catalog-300 results"
