@@ -16,6 +16,9 @@ Standalone **command-line** package for the DrugOps / MolGate virtual-screening 
 
 ---
 
+<img width="1077" height="652" alt="574605006-13eadd18-29af-4672-aa2c-48a2b1d9e252" src="https://github.com/user-attachments/assets/c36ae9c6-5d50-4330-bade-c697c3552533" />
+
+
 ## Quick start (Windows CMD)
 
 ```bat
